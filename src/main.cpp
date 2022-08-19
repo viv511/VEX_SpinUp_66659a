@@ -88,6 +88,7 @@ void on_center_button() {
  * to keep execution time for this mode under a few seconds.
  */
 void initialize() {
+	reset_encoder();
 	pros::lcd::initialize();
 	inertial.reset();
 	inertial.set_rotation(0);
