@@ -62,9 +62,9 @@ void odometry() {
 		// pros::lcd::print(2, "L: %ld\n", leftEncoder.get_position());
 		// pros::lcd::print(3, "R: %ld\n", rightEncoder.get_position());
 
-		pros::lcd::print(1, "L: %d\n", avg_l());
-		
-		pros::lcd::print(3, "R: %d\n", avg_r());
+		pros::lcd::print(1, "L: %d\n", leftEncoder.get_position());
+		pros::lcd::print(2, "R: %d\n", rightEncoder.get_position());
+		pros::lcd::print(3, "B: %d\n", backEncoder.get_value());
 
 		pros::delay(10);
 	}
@@ -88,13 +88,15 @@ void on_center_button() {
  * to keep execution time for this mode under a few seconds.
  */
 void initialize() {
-	reset_encoder();
+	
 	pros::lcd::initialize();
 	inertial.reset();
 	inertial.set_rotation(0);
+
 	backEncoder.reset();
 	leftEncoder.set_position(0);
 	rightEncoder.set_position(0);
+
 	pros::Task odom (odometry);
 }
 
