@@ -77,6 +77,8 @@ void turn(double angle);
 
 void drive(int ticks);
 
+void tbh(double speed);
+
 void move_encoder(double ticks, double speed);
 void reset_encoder(void);
 double average_encoders();

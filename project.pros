@@ -1,7 +1,7 @@
 {
   "py/object": "pros.conductor.project.Project",
   "py/state": {
-    "project_name": "spinnyup",
+    "project_name": "666SpinUp",
     "target": "v5",
     "templates": {
       "kernel": {
@@ -307,7 +307,7 @@
     "upload_options": {
       "description": "Vex SpinUp 22-23",
       "slot": 1,
-      "icon": "clawbot"
+      "icon": "pizza"
     }
   }
 }

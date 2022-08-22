@@ -1,6 +1,7 @@
 #include "main.h"
 #include "globals.h"
 #include "pros/misc.h"
+#include "pros/motors.h"
 #include "pros/optical.h"
 #include <iostream>
 #include <fstream>
@@ -19,54 +20,68 @@ constexpr double R_DIST = 2.5;
 constexpr double B_DIST = 3.5;
 
 //Diameter of wheels (inches)
-constexpr double LEFT_WHEEL_DIAMETER = 2.783;
-constexpr double RIGHT_WHEEL_DIAMETER = 2.783;
-constexpr double BACK_WHEEL_DIAMETER = 2.783;
+constexpr double LEFT_WHEEL_DIAMETER = 2.75;
+constexpr double RIGHT_WHEEL_DIAMETER = 2.75;
+constexpr double BACK_WHEEL_DIAMETER = 2.75;
 
 //Ticks per rotation
 #define TICKS_PER_ROTATION_ENCODER 360.0
-#define TICKS_PER_ROTATION_ROTATIONAL 4096.0
+#define TICKS_PER_ROTATION_ROTATIONAL 36000.0
 
 //2*PI*R = Circumference, circumference in inches / ticks per rotation can be multiplied by any number of ticks to get inches travelled
+//0.000243 or 0.00024286
 constexpr double LEFT_SPIN_IN_RATIO = (PI * LEFT_WHEEL_DIAMETER)/TICKS_PER_ROTATION_ROTATIONAL;
 constexpr double RIGHT_SPIN_IN_RATIO = (PI * RIGHT_WHEEL_DIAMETER)/TICKS_PER_ROTATION_ROTATIONAL;
+//0.024286
 constexpr double BACK_SPIN_IN_RATIO = (PI * BACK_WHEEL_DIAMETER)/TICKS_PER_ROTATION_ENCODER;
 
 double iHeading = 0;
+double deltaL;
+double deltaR;
+double deltaB;
+double thetaAngle;
 
-double leftEncoderLast;
-double rightEncoderLast;
-double backEncoderLast;
-double curLeftEncoder;
-double curRightEncoder;
-double curBackEncoder;
+int leftEncoderLast;
+int rightEncoderLast;
+int backEncoderLast;
 
 void odometry() {
 	while(true) {
-		// //Change in each encoder in inches
-		// double deltaL = (curLeftEncoder - leftEncoderLast) * LEFT_SPIN_IN_RATIO;
-		// double deltaR = (curRightEncoder - rightEncoderLast) * RIGHT_SPIN_IN_RATIO;
-		// double deltaB = (curBackEncoder - backEncoderLast) * BACK_SPIN_IN_RATIO;
+		//Change in each encoder in inches
+		deltaL = (leftEncoder.get_position() - leftEncoderLast) * LEFT_SPIN_IN_RATIO;
+		deltaR = (rightEncoder.get_position() - rightEncoderLast) * RIGHT_SPIN_IN_RATIO;
+		deltaB = (backEncoder.get_value() - backEncoderLast) * BACK_SPIN_IN_RATIO;
 	
-		// //Save last values
-		// leftEncoderLast = curLeftEncoder;
-		// rightEncoderLast = curRightEncoder;
-		// backEncoderLast = curBackEncoder;
+		//Save last values
+		leftEncoderLast = leftEncoder.get_position();
+		rightEncoderLast = rightEncoder.get_position();
+		backEncoderLast = backEncoder.get_value();
 
-		// double theta = iHeading + ((deltaL-deltaR) / (L_DIST + R_DIST));
+		thetaAngle = radiansToDegrees * ((deltaL-deltaR) / (L_DIST + R_DIST));
 
 		// pros::lcd::print(0, "headingInertial: %f\n", inertial.get_rotation());
-		// pros::lcd::print(3, "headingEncoder: %d\n", theta);
+
+		// pros::lcd::print(0, "L: %d\n", leftEncoder.get_position());
+		// pros::lcd::print(1, "R: %d\n", rightEncoder.get_position());
+		// pros::lcd::print(2, "B: %d\n", backEncoder.get_value());
+		// pros::lcd::print(3, "L last: %d\n", leftEncoderLast);
+		// pros::lcd::print(4, "R last : %d\n", rightEncoderLast);
+		// pros::lcd::print(5, "B last: %d\n", backEncoderLast);
+
+
+		// pros::lcd::print(4, "Fly: %f\n", Fly.get_actual_velocity());
+		// pros::lcd::print(5, "odomHeading: %f\n", thetaAngle);
+		// pros::lcd::print(6, "ratio: %f\n", BACK_SPIN_IN_RATIO);
 
 		// pros::lcd::print(1, "B: %d\n", backEncoder.get_value());
 		// pros::lcd::print(2, "L: %ld\n", leftEncoder.get_position());
 		// pros::lcd::print(3, "R: %ld\n", rightEncoder.get_position());
 
-		pros::lcd::print(1, "L: %d\n", leftEncoder.get_position());
-		pros::lcd::print(2, "R: %d\n", rightEncoder.get_position());
-		pros::lcd::print(3, "B: %d\n", backEncoder.get_value());
+		// pros::lcd::print(1, "L: %d\n", leftEncoder.get_position());
+		// pros::lcd::print(2, "R: %d\n", rightEncoder.get_position());
+		// pros::lcd::print(3, "B: %d\n", backEncoder.get_value());
 
-		pros::delay(10);
+		pros::delay(50);
 	}
 }
 
@@ -94,6 +109,12 @@ void initialize() {
 	inertial.set_rotation(0);
 
 	backEncoder.reset();
+	leftEncoder.reset();
+	rightEncoder.reset();
+
+	leftEncoder.reset_position();
+	rightEncoder.reset_position();
+
 	leftEncoder.set_position(0);
 	rightEncoder.set_position(0);
 
@@ -154,6 +175,12 @@ void opcontrol() {
 	while(true) {
 			pros::delay(10);
 			
+			pros::lcd::print(0, "L: %d\n", deltaL);
+			pros::lcd::print(1, "R: %d\n", deltaR);
+			pros::lcd::print(2, "B: %d\n", deltaB);
+
+			pros::lcd::print(5, "angle: %f\n", thetaAngle);
+
 			int a4 = 120*controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
 			int a3 = 120*controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
 			FL.move_voltage(a4 + a3);
@@ -163,19 +190,21 @@ void opcontrol() {
 			BL.move_voltage(a4 + a3);
 			BR.move_voltage(a4 - a3);
 			
+			
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
-				Fly.move_velocity(0);
+				tbh(500);
 			}
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
-				Fly.move_voltage(-12000);
+				Fly.move_velocity(600);
 			}
+			
 
-			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
-				shooter.set_value(false);
-			}
-			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
-				shooter.set_value(true);
-			}
+			// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
+			// 	shooter.set_value(false);
+			// }
+			// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
+			// 	shooter.set_value(true);
+			// }
 
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP)) {
 				Intake.move_voltage(9000);
@@ -262,6 +291,32 @@ void pivot(double angle) {
 	BL.move_voltage(0);
 	
 }
+
+void tbh(double speed) {
+	double power = 0;
+	double prevPower = 0;
+	double error = 0;
+	double gain = 1;
+
+	while(fabs(speed - Fly.get_actual_velocity()) > 1) {
+		error = speed - Fly.get_actual_velocity();
+		power = prevPower + (error) * gain;
+		prevPower = power;
+
+		Fly.move_voltage(power);
+		pros::delay(10);
+	}
+
+	// if(!(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B))) {
+	// 	Fly.move_voltage(power);
+	// }
+	// else{
+	// 	Fly.move_voltage(0);
+	// 	Fly.brake();
+	// }
+
+}
+
 void turn(double angle) {
 	inertial.tare_rotation();
 
@@ -407,3 +462,4 @@ void goToPoint(double startX, double startY, double endX, double endY, double sp
 	double turn = atan2(endY, endX) * radiansToDegrees;
 	pivot(turn);
 }
+
