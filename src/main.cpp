@@ -6,85 +6,79 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
-#include <algorithm> 
 #include <cmath>
 
-constexpr double PI = 3.1415926535897;
-constexpr double degreesToRadians = PI/180;
-constexpr double radiansToDegrees = 180/PI;
+//--------------------------// Odometry //--------------------------//			
 
-//credit to 5225a's doc
-//Distance from center (inches)
-constexpr double L_DIST = 2.5;
-constexpr double R_DIST = 2.5;
-constexpr double B_DIST = 3.5;
+//Utility
+constexpr float PI = 3.141592;
+constexpr float degreesToRadians = PI/180;
+constexpr float radiansToDegrees = 180/PI;
 
-//Diameter of wheels (inches)
-constexpr double LEFT_WHEEL_DIAMETER = 2.75;
-constexpr double RIGHT_WHEEL_DIAMETER = 2.75;
-constexpr double BACK_WHEEL_DIAMETER = 2.75;
+//Distance from center
+constexpr float LR_DIST = 2.5;
+constexpr float B_DIST = 3.5;
+
+//Diameter of wheels
+constexpr float LR_DIAMETER = 2.75;
+constexpr float B_DIAMETER = 2.75;
 
 //Ticks per rotation
-#define TICKS_PER_ROTATION_ENCODER 360.0
-#define TICKS_PER_ROTATION_ROTATIONAL 36000.0
+constexpr float LR_TICKS = 36000.0;
+constexpr float B_TICKS = 360.0;
 
-//2*PI*R = Circumference, circumference in inches / ticks per rotation can be multiplied by any number of ticks to get inches travelled
-//0.000243 or 0.00024286
-constexpr double LEFT_SPIN_IN_RATIO = (PI * LEFT_WHEEL_DIAMETER)/TICKS_PER_ROTATION_ROTATIONAL;
-constexpr double RIGHT_SPIN_IN_RATIO = (PI * RIGHT_WHEEL_DIAMETER)/TICKS_PER_ROTATION_ROTATIONAL;
-//0.024286
-constexpr double BACK_SPIN_IN_RATIO = (PI * BACK_WHEEL_DIAMETER)/TICKS_PER_ROTATION_ENCODER;
+//L + Ratio (jk)
+constexpr float LR_RATIO = (PI * LR_DIAMETER)/LR_TICKS; 
+constexpr float B_RATIO = (PI * B_DIAMETER)/B_TICKS;
 
-double iHeading = 0;
-double deltaL;
-double deltaR;
-double deltaB;
-double thetaAngle;
+int leftCurrent = 0;
+int rightCurrent = 0;
+int backCurrent = 0;
+int leftLast = 0;
+int rightLast = 0;
+int backLast = 0;
 
-int leftEncoderLast;
-int rightEncoderLast;
-int backEncoderLast;
+float absoluteAngle = 0;
+float absoluteLeft = 0;
+float absoluteRight = 0;
+float absoluteBack = 0;
 
-void odometry() {
+void odometry() {	
+
 	while(true) {
-		//Change in each encoder in inches
-		deltaL = (leftEncoder.get_position() - leftEncoderLast) * LEFT_SPIN_IN_RATIO;
-		deltaR = (rightEncoder.get_position() - rightEncoderLast) * RIGHT_SPIN_IN_RATIO;
-		deltaB = (backEncoder.get_value() - backEncoderLast) * BACK_SPIN_IN_RATIO;
-	
-		//Save last values
-		leftEncoderLast = leftEncoder.get_position();
-		rightEncoderLast = rightEncoder.get_position();
-		backEncoderLast = backEncoder.get_value();
+		leftCurrent = leftEncoder.get_position();
+		rightCurrent = rightEncoder.get_position() * -1;
+		backCurrent = backEncoder.get_value();	
+		
+		//Calculate the change in encoder since last cycle, convert to inches
+		float leftChange = (leftCurrent - leftLast);
+		float rightChange = (rightCurrent - rightLast);
+		float backChange = (backCurrent - backLast);
+		leftChange *= LR_RATIO;
+		rightChange *= LR_RATIO;
+		backChange *= B_RATIO;
 
-		thetaAngle = radiansToDegrees * ((deltaL-deltaR) / (L_DIST + R_DIST));
+		//Store last values
+		leftLast = leftCurrent;
+		rightLast = rightCurrent;
+		backLast = backCurrent;
 
-		// pros::lcd::print(0, "headingInertial: %f\n", inertial.get_rotation());
+		//Find the angle change from the last cycle
+		float angleChange = (leftChange - rightChange) / (LR_DIST + LR_DIST);
 
-		// pros::lcd::print(0, "L: %d\n", leftEncoder.get_position());
-		// pros::lcd::print(1, "R: %d\n", rightEncoder.get_position());
-		// pros::lcd::print(2, "B: %d\n", backEncoder.get_value());
-		// pros::lcd::print(3, "L last: %d\n", leftEncoderLast);
-		// pros::lcd::print(4, "R last : %d\n", rightEncoderLast);
-		// pros::lcd::print(5, "B last: %d\n", backEncoderLast);
+		//Calculate absolute orientation + absolute left, right, and back encoder change
+		absoluteLeft = absoluteLeft + leftChange;
+		absoluteRight = absoluteRight + rightChange;
+		absoluteBack = absoluteBack + backChange;	
+		absoluteAngle = absoluteAngle + angleChange;
+		
+		pros::lcd::print(1, "L: %f\n", absoluteLeft);
+		pros::lcd::print(2, "R: %f\n", absoluteRight);
+		pros::lcd::print(3, "B: %f\n", absoluteBack);
 
-
-		// pros::lcd::print(4, "Fly: %f\n", Fly.get_actual_velocity());
-		// pros::lcd::print(5, "odomHeading: %f\n", thetaAngle);
-		// pros::lcd::print(6, "ratio: %f\n", BACK_SPIN_IN_RATIO);
-
-		// pros::lcd::print(1, "B: %d\n", backEncoder.get_value());
-		// pros::lcd::print(2, "L: %ld\n", leftEncoder.get_position());
-		// pros::lcd::print(3, "R: %ld\n", rightEncoder.get_position());
-
-		// pros::lcd::print(1, "L: %d\n", leftEncoder.get_position());
-		// pros::lcd::print(2, "R: %d\n", rightEncoder.get_position());
-		// pros::lcd::print(3, "B: %d\n", backEncoder.get_value());
-
-		pros::delay(50);
+		pros::delay(10);
 	}
 }
-
 
 /**
  * A callback function for LLEMU's center button.
@@ -111,9 +105,6 @@ void initialize() {
 	backEncoder.reset();
 	leftEncoder.reset();
 	rightEncoder.reset();
-
-	leftEncoder.reset_position();
-	rightEncoder.reset_position();
 
 	leftEncoder.set_position(0);
 	rightEncoder.set_position(0);
@@ -174,13 +165,7 @@ void autonomous() {
 void opcontrol() {
 	while(true) {
 			pros::delay(10);
-			
-			pros::lcd::print(0, "L: %d\n", deltaL);
-			pros::lcd::print(1, "R: %d\n", deltaR);
-			pros::lcd::print(2, "B: %d\n", deltaB);
-
-			pros::lcd::print(5, "angle: %f\n", thetaAngle);
-
+		
 			int a4 = 120*controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
 			int a3 = 120*controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
 			FL.move_voltage(a4 + a3);
@@ -191,12 +176,19 @@ void opcontrol() {
 			BR.move_voltage(a4 - a3);
 			
 			
-			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
-				tbh(500);
+			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
+				Fly.brake();
 			}
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
-				Fly.move_velocity(600);
+				Fly.move_velocity(150);
 			}
+			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
+				Fly.move_velocity(300);
+			}
+			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
+				Fly.move_velocity(450);
+			}
+			
 			
 
 			// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
