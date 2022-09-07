@@ -20,8 +20,8 @@ constexpr float LR_DIST = 2.5;
 constexpr float B_DIST = 3.5;
 
 //Diameter of wheels
-constexpr float LR_DIAMETER = 2.75;
-constexpr float B_DIAMETER = 2.75;
+constexpr float LR_DIAMETER = 2.83;
+constexpr float B_DIAMETER = 2.83;
 
 //Ticks per rotation
 constexpr float LR_TICKS = 36000.0;
@@ -64,7 +64,7 @@ void odometry() {
 		backLast = backCurrent;
 
 		//Find the angle change from the last cycle
-		float angleChange = (leftChange - rightChange) / (LR_DIST + LR_DIST);
+		float angleChange = (leftChange - rightChange) / (LR_DIST + LR_DIST) * radiansToDegrees;
 
 		//Calculate absolute orientation + absolute left, right, and back encoder change
 		absoluteLeft = absoluteLeft + leftChange;
@@ -75,6 +75,7 @@ void odometry() {
 		pros::lcd::print(1, "L: %f\n", absoluteLeft);
 		pros::lcd::print(2, "R: %f\n", absoluteRight);
 		pros::lcd::print(3, "B: %f\n", absoluteBack);
+		pros::lcd::print(4, "Angle: %f\n", absoluteAngle);
 
 		pros::delay(10);
 	}
