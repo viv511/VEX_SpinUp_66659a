@@ -11,17 +11,18 @@
 //--------------------------// Odometry //--------------------------//			
 
 //Utility
+double flySpeed;
 constexpr float PI = 3.141592;
 constexpr float degreesToRadians = PI/180;
 constexpr float radiansToDegrees = 180/PI;
 
 //Distance from center
-constexpr float LR_DIST = 2.5;
+constexpr float LR_DIST = 3.25;
 constexpr float B_DIST = 3.5;
 
 //Diameter of wheels
-constexpr float LR_DIAMETER = 2.83;
-constexpr float B_DIAMETER = 2.83;
+constexpr float LR_DIAMETER = 2.8;
+constexpr float B_DIAMETER = 2.8;
 
 //Ticks per rotation
 constexpr float LR_TICKS = 36000.0;
@@ -81,6 +82,17 @@ void odometry() {
 	}
 }
 
+void flywheelStuff() {
+
+	while(true) {
+		flySpeed = Fly.get_actual_velocity();
+		pros::lcd::print(6, "Fly: %f\n", flySpeed);
+
+		pros::delay(10);
+	}
+	
+}
+
 /**
  * A callback function for LLEMU's center button.
  *
@@ -111,6 +123,7 @@ void initialize() {
 	rightEncoder.set_position(0);
 
 	pros::Task odom (odometry);
+	pros::Task fly (flywheelStuff);
 }
 
 /**
@@ -164,6 +177,8 @@ void autonomous() {
  * task, not resume it from where it left off.
  */
 void opcontrol() {
+	bool flyOn = false;
+
 	while(true) {
 			pros::delay(10);
 		
@@ -171,23 +186,25 @@ void opcontrol() {
 			int a3 = 120*controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
 			FL.move_voltage(a4 + a3);
 			FR.move_voltage(a4 - a3);
-			MR.move_voltage(a4 - a3);
-			ML.move_voltage(a4 + a3);
+			// MR.move_voltage(a4 - a3);
+			// ML.move_voltage(a4 + a3);
 			BL.move_voltage(a4 + a3);
 			BR.move_voltage(a4 - a3);
 			
-			
+
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
-				Fly.brake();
-			}
-			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
-				Fly.move_velocity(150);
-			}
-			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
-				Fly.move_velocity(300);
-			}
-			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
-				Fly.move_velocity(450);
+				while(1) {
+					Fly.move_voltage(12000);
+					
+					pros::lcd::print(7, "Fly: %f\n", Fly.get_actual_velocity());
+		
+		
+					if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
+						Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+						Fly.move_voltage(0);
+						break;
+					}
+				}
 			}
 			
 			
@@ -200,13 +217,16 @@ void opcontrol() {
 			// }
 
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP)) {
-				Intake.move_voltage(9000);
+				ML_intake.move_voltage(-12000);
+				MR_intake.move_voltage(12000);
 			}
 			else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_DOWN)) {
-				Intake.move_voltage(-9000);
+				MR_intake.move_voltage(-12000);
+				ML_intake.move_voltage(12000);
 			}
 			else if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) || (controller.get_digital(pros::E_CONTROLLER_DIGITAL_RIGHT))){
-				Intake.move_voltage(0);
+				ML_intake.move_voltage(0);
+				MR_intake.move_voltage(0);
 			}
 
 		}
@@ -269,8 +289,8 @@ void pivot(double angle) {
 
 		FR.move_velocity(power);
 		FL.move_velocity(power);
-		MR.move_velocity(power);
-		ML.move_velocity(power);
+		// MR.move_velocity(power);
+		// ML.move_velocity(power);
 		BR.move_velocity(power);
 		BL.move_velocity(power);
 		pros::delay(15);
@@ -278,8 +298,8 @@ void pivot(double angle) {
 	
 	FR.move_voltage(0);
     FL.move_voltage(0);
-    MR.move_voltage(0);
-	ML.move_voltage(0);
+    // MR.move_voltage(0);
+	// ML.move_voltage(0);
     BR.move_voltage(0);
 	BL.move_voltage(0);
 	
@@ -337,17 +357,17 @@ void turn(double angle) {
 
 		FR.move_velocity(power);
 		FL.move_velocity(power);
-		MR.move_velocity(power);
-		ML.move_velocity(power);
+		// MR.move_velocity(power);
+		// ML.move_velocity(power);
 		BR.move_velocity(power);
 		BL.move_velocity(power);
 		pros::delay(15);
 	}
 	FL.move_voltage(0);
-    ML.move_voltage(0);
+    // ML.move_voltage(0);
     BL.move_voltage(0);
     FR.move_voltage(0);
-    MR.move_voltage(0);
+    // MR.move_voltage(0);
     BR.move_voltage(0);
 }
 
@@ -377,22 +397,22 @@ void drive(int ticks) {
 
 		FR.move_velocity(-power);
 		FL.move_velocity(power);
-		MR.move_velocity(-(power));
-		ML.move_velocity((power));
+		// MR.move_velocity(-(power));
+		// ML.move_velocity((power));
 		BR.move_velocity(-(power));
 		BL.move_velocity((power));
 		pros::delay(15);
 	}
-	ML.set_brake_mode(E_MOTOR_BRAKE_HOLD);
+	// ML.set_brake_mode(E_MOTOR_BRAKE_HOLD);
 	BL.set_brake_mode(E_MOTOR_BRAKE_HOLD);
-	MR.set_brake_mode(E_MOTOR_BRAKE_HOLD);
+	// MR.set_brake_mode(E_MOTOR_BRAKE_HOLD);
 	BR.set_brake_mode(E_MOTOR_BRAKE_HOLD);
 	FR.set_brake_mode(E_MOTOR_BRAKE_HOLD);
 	FL.set_brake_mode(E_MOTOR_BRAKE_HOLD);
 
-    ML.move_voltage(0);
+    // ML.move_voltage(0);
     BL.move_voltage(0);
-    MR.move_voltage(0);
+    // MR.move_voltage(0);
 	FL.move_voltage(0);
     FR.move_voltage(0);
     BR.move_voltage(0);
@@ -403,8 +423,8 @@ void move_encoder(double ticks, double speed) {
 	
 	FR.move_velocity(-speed);
 	FL.move_velocity(speed);
-	MR.move_velocity(-speed);
-	ML.move_velocity(speed);
+	// MR.move_velocity(-speed);
+	// ML.move_velocity(speed);
 	BR.move_velocity(-speed);
 	BL.move_velocity(speed);
 
@@ -413,25 +433,26 @@ void move_encoder(double ticks, double speed) {
 	}
 
 	FL.move_voltage(0);
-    ML.move_voltage(0);
+    // ML.move_voltage(0);
     BL.move_voltage(0);
     FR.move_voltage(0);
-    MR.move_voltage(0);
+    // MR.move_voltage(0);
     BR.move_voltage(0);
 }
 void reset_encoder() {
 	FL.tare_position();
-	ML.tare_position();
+	// ML.tare_position();
 	BL.tare_position();
 	FR.tare_position();
-	MR.tare_position();
+	// MR.tare_position();
 	BR.tare_position();
 }
 double average_encoders() {
-	return (fabs(FR.get_position())+fabs(FL.get_position())+fabs(BL.get_position()) +
-		fabs(ML.get_position()) +
-		fabs(BR.get_position()) +
-		fabs(MR.get_position())) / 6;
+	// return (fabs(FR.get_position())+fabs(FL.get_position())+fabs(BL.get_position()) +
+	// 	fabs(ML.get_position()) +
+	// 	fabs(BR.get_position()) +
+	// 	fabs(MR.get_position())) / 6;
+	return 1.2;
 }
 
 double avg_r() {

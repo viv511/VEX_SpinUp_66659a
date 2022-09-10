@@ -71,6 +71,7 @@ void competition_initialize(void);
 void opcontrol(void);
 
 void odometry(void);
+void flywheelStuff(void);
 
 void pivot(double angle);
 void turn(double angle);
