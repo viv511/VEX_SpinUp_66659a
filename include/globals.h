@@ -12,6 +12,7 @@ extern pros::Motor BL;
 extern pros::Motor BR;
 
 extern pros::Motor Fly;
+extern pros::Motor Indexer;
 
 extern pros::Motor Intake;
 

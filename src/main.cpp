@@ -11,7 +11,6 @@
 //--------------------------// Odometry //--------------------------//			
 
 //Utility
-double flySpeed;
 constexpr float PI = 3.141592;
 constexpr float degreesToRadians = PI/180;
 constexpr float radiansToDegrees = 180/PI;
@@ -44,6 +43,10 @@ float absoluteLeft = 0;
 float absoluteRight = 0;
 float absoluteBack = 0;
 
+
+
+
+
 void odometry() {	
 
 	while(true) {
@@ -55,6 +58,8 @@ void odometry() {
 		float leftChange = (leftCurrent - leftLast);
 		float rightChange = (rightCurrent - rightLast);
 		float backChange = (backCurrent - backLast);
+
+		//Ticks --> Inches
 		leftChange *= LR_RATIO;
 		rightChange *= LR_RATIO;
 		backChange *= B_RATIO;
@@ -72,7 +77,9 @@ void odometry() {
 		absoluteRight = absoluteRight + rightChange;
 		absoluteBack = absoluteBack + backChange;	
 		absoluteAngle = absoluteAngle + angleChange;
-		
+	
+		angleChange = 0;
+
 		pros::lcd::print(1, "L: %f\n", absoluteLeft);
 		pros::lcd::print(2, "R: %f\n", absoluteRight);
 		pros::lcd::print(3, "B: %f\n", absoluteBack);
@@ -82,15 +89,34 @@ void odometry() {
 	}
 }
 
-void flywheelStuff() {
+
+void flySpeed() {
+	bool flyState = false;
+	bool flyLast = false;
 
 	while(true) {
-		flySpeed = Fly.get_actual_velocity();
-		pros::lcd::print(6, "Fly: %f\n", flySpeed);
+		if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) && !flyLast) {
+			flyState = !flyState;
+			flyLast = true;
+		}
+		else if(!(controller.get_digital(pros::E_CONTROLLER_DIGITAL_X))) {
+			flyLast = false;
+		}
+
+		if(flyState == true) {
+			Fly.move_voltage(12000);
+		}
+		else {
+			Fly.move_velocity(0);
+		}
+
+		if(Fly.get_actual_velocity() > 450) {
+			controller.rumble(".");
+		}
+		pros::lcd::print(7, "Fly: %f\n", Fly.get_actual_velocity());
 
 		pros::delay(10);
 	}
-	
 }
 
 /**
@@ -123,7 +149,7 @@ void initialize() {
 	rightEncoder.set_position(0);
 
 	pros::Task odom (odometry);
-	pros::Task fly (flywheelStuff);
+	pros::Task flywheelstuff (flySpeed);
 }
 
 /**
@@ -177,8 +203,8 @@ void autonomous() {
  * task, not resume it from where it left off.
  */
 void opcontrol() {
-	bool flyOn = false;
 
+	
 	while(true) {
 			pros::delay(10);
 		
@@ -191,30 +217,13 @@ void opcontrol() {
 			BL.move_voltage(a4 + a3);
 			BR.move_voltage(a4 - a3);
 			
-
-			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
-				while(1) {
-					Fly.move_voltage(12000);
-					
-					pros::lcd::print(7, "Fly: %f\n", Fly.get_actual_velocity());
-		
-		
-					if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
-						Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
-						Fly.move_voltage(0);
-						break;
-					}
-				}
+			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
+				Indexer.move_voltage(12000);
+				pros::delay(300);
+				Indexer.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
+				Indexer.brake();
 			}
-			
-			
 
-			// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
-			// 	shooter.set_value(false);
-			// }
-			// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
-			// 	shooter.set_value(true);
-			// }
 
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP)) {
 				ML_intake.move_voltage(-12000);
@@ -319,14 +328,6 @@ void tbh(double speed) {
 		Fly.move_voltage(power);
 		pros::delay(10);
 	}
-
-	// if(!(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B))) {
-	// 	Fly.move_voltage(power);
-	// }
-	// else{
-	// 	Fly.move_voltage(0);
-	// 	Fly.brake();
-	// }
 
 }
 
