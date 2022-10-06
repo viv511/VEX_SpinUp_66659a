@@ -11,6 +11,7 @@
 //--------------------------// Odometry //--------------------------//			
 
 //Utility
+bool PTO = false;
 constexpr float PI = 3.141592;
 constexpr float degreesToRadians = PI/180;
 constexpr float radiansToDegrees = 180/PI;
@@ -38,14 +39,27 @@ int leftLast = 0;
 int rightLast = 0;
 int backLast = 0;
 
+float rightChange;
+float leftChange;
+float backChange;
+float angleChange;
+
 float absoluteAngle = 0;
 float absoluteLeft = 0;
 float absoluteRight = 0;
 float absoluteBack = 0;
 
+float x_start = 0;
+float y_start = 0;
+float angle_start = 0;
 
-
-
+float x_local = 0;
+float y_local = 0;
+float delta_x_global = 0;
+float delta_y_global = 0;
+float x_global = x_start;
+float y_global = y_start;
+float offsetCoord = absoluteAngle + (angleChange / 2);
 
 void odometry() {	
 
@@ -55,9 +69,9 @@ void odometry() {
 		backCurrent = backEncoder.get_value();	
 		
 		//Calculate the change in encoder since last cycle, convert to inches
-		float leftChange = (leftCurrent - leftLast);
-		float rightChange = (rightCurrent - rightLast);
-		float backChange = (backCurrent - backLast);
+		leftChange = (leftCurrent - leftLast);
+		rightChange = (rightCurrent - rightLast);
+		backChange = (backCurrent - backLast);
 
 		//Ticks --> Inches
 		leftChange *= LR_RATIO;
@@ -69,28 +83,62 @@ void odometry() {
 		rightLast = rightCurrent;
 		backLast = backCurrent;
 
-		//Find the angle change from the last cycle
-		float angleChange = (leftChange - rightChange) / (LR_DIST + LR_DIST) * radiansToDegrees;
+		//Find the angle change from the last cycle (Radians)
+		angleChange = angle_start + ((leftChange - rightChange) / (LR_DIST + LR_DIST));
 
 		//Calculate absolute orientation + absolute left, right, and back encoder change
-		absoluteLeft = absoluteLeft + leftChange;
-		absoluteRight = absoluteRight + rightChange;
-		absoluteBack = absoluteBack + backChange;	
-		absoluteAngle = absoluteAngle + angleChange;
+		absoluteLeft += leftChange;
+		absoluteRight += rightChange;
+		absoluteBack += backChange;	
+		absoluteAngle += angleChange;
 	
-		angleChange = 0;
+		
+		if(angleChange == 0) {
+			x_local = backChange;
+			y_local = rightChange;
+		}
+		else {
+			//need to find radius, then multiply by 2 sin (deltatheta/2)
+			x_local = ((backChange / angleChange) + B_DIST) * 2 * sin(angleChange / 2.0);
+			y_local = ((rightChange / angleChange) + LR_DIST) * 2 * sin(angleChange / 2.0);
+		}
+
+		//need to translate local --> global
+		//check
+		offsetCoord = absoluteAngle - (angleChange / 2);
+		
+		delta_x_global = (y_local * cos(offsetCoord)) - (x_local * sin(offsetCoord));
+		delta_y_global = (y_local * sin(offsetCoord)) + (x_local * cos(offsetCoord));
+
+
+		x_global += delta_x_global;
+		y_global += delta_y_global;
+
 
 		pros::lcd::print(1, "L: %f\n", absoluteLeft);
 		pros::lcd::print(2, "R: %f\n", absoluteRight);
 		pros::lcd::print(3, "B: %f\n", absoluteBack);
-		pros::lcd::print(4, "Angle: %f\n", absoluteAngle);
+		pros::lcd::print(4, "(rad) Angle: %f\n", absoluteAngle);
+		pros::lcd::print(5, "X: %f\n", x_local);
+		pros::lcd::print(6, "Y: %f\n", y_local);
 
 		pros::delay(10);
 	}
 }
 
 
+//--------------------------// FlyWheel //--------------------------//	
+
 void flySpeed() {
+	int goal = 400;
+	// error = goal - currentSpeed;                // calculate the error;
+	// output += gain * error;                     // integrate the output;
+	// if (signbit(error) != signbit(prev_error)) { // if zero crossing,
+  	// 	output = 0.5 * (output + tbh);            // then Take Back Half
+  	// 	tbh = output;                             // update Take Back Half variable
+  	// 	prev_error = error;                       // and save the previous error
+	// }
+
 	bool flyState = false;
 	bool flyLast = false;
 
@@ -104,7 +152,7 @@ void flySpeed() {
 		}
 
 		if(flyState == true) {
-			Fly.move_voltage(12000);
+			Fly.move_voltage(10000);
 		}
 		else {
 			Fly.move_velocity(0);
@@ -203,17 +251,35 @@ void autonomous() {
  * task, not resume it from where it left off.
  */
 void opcontrol() {
+	PTO = true;
 
-	
 	while(true) {
 			pros::delay(10);
 		
-			int a4 = 120*controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
-			int a3 = 120*controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+			int a4 = 120 * controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
+			int a3 = 120 * controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
 			FL.move_voltage(a4 + a3);
 			FR.move_voltage(a4 - a3);
-			// MR.move_voltage(a4 - a3);
-			// ML.move_voltage(a4 + a3);
+
+			if(PTO == true) {
+				ML_intake.move_voltage(a4 - a3);
+				MR_intake.move_voltage(a4 + a3);
+			}
+			else{
+				if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP)) {
+					ML_intake.move_voltage(-12000);
+					MR_intake.move_voltage(12000);
+				}
+				else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_DOWN)) {
+					MR_intake.move_voltage(-12000);
+					ML_intake.move_voltage(12000);
+				}
+				else if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) || (controller.get_digital(pros::E_CONTROLLER_DIGITAL_RIGHT))){
+					ML_intake.move_voltage(0);
+					MR_intake.move_voltage(0);
+				}
+			}
+
 			BL.move_voltage(a4 + a3);
 			BR.move_voltage(a4 - a3);
 			
@@ -224,19 +290,6 @@ void opcontrol() {
 				Indexer.brake();
 			}
 
-
-			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP)) {
-				ML_intake.move_voltage(-12000);
-				MR_intake.move_voltage(12000);
-			}
-			else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_DOWN)) {
-				MR_intake.move_voltage(-12000);
-				ML_intake.move_voltage(12000);
-			}
-			else if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) || (controller.get_digital(pros::E_CONTROLLER_DIGITAL_RIGHT))){
-				ML_intake.move_voltage(0);
-				MR_intake.move_voltage(0);
-			}
 
 		}
 }
