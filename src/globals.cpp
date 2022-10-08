@@ -23,7 +23,7 @@ pros::Rotation leftEncoder(15);
 pros::Rotation rightEncoder(5);
 
 
-//pistons
-// pros::ADIDigitalOut shooter('A');
+// pistons
+pros::ADIDigitalOut ptoPiston('H');
 // pros::ADIDigitalOut pistonB1('A');
 // pros::ADIDigitalOut pistonB2('A');

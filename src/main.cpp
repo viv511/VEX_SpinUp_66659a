@@ -12,6 +12,7 @@
 
 //Utility
 bool PTO = false;
+int goalRPM;
 constexpr float PI = 3.141592;
 constexpr float degreesToRadians = PI/180;
 constexpr float radiansToDegrees = 180/PI;
@@ -115,12 +116,12 @@ void odometry() {
 		y_global += delta_y_global;
 
 
-		pros::lcd::print(1, "L: %f\n", absoluteLeft);
-		pros::lcd::print(2, "R: %f\n", absoluteRight);
-		pros::lcd::print(3, "B: %f\n", absoluteBack);
-		pros::lcd::print(4, "(rad) Angle: %f\n", absoluteAngle);
-		pros::lcd::print(5, "X: %f\n", x_local);
-		pros::lcd::print(6, "Y: %f\n", y_local);
+		// pros::lcd::print(1, "L: %f\n", absoluteLeft);
+		// pros::lcd::print(2, "R: %f\n", absoluteRight);
+		// pros::lcd::print(3, "B: %f\n", absoluteBack);
+		// pros::lcd::print(4, "(rad) Angle: %f\n", absoluteAngle);
+		// pros::lcd::print(5, "X: %f\n", x_local);
+		// pros::lcd::print(6, "Y: %f\n", y_local);
 
 		pros::delay(10);
 	}
@@ -130,7 +131,6 @@ void odometry() {
 //--------------------------// FlyWheel //--------------------------//	
 
 void flySpeed() {
-	int goal = 400;
 	// error = goal - currentSpeed;                // calculate the error;
 	// output += gain * error;                     // integrate the output;
 	// if (signbit(error) != signbit(prev_error)) { // if zero crossing,
@@ -143,24 +143,32 @@ void flySpeed() {
 	bool flyLast = false;
 
 	while(true) {
-		if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) && !flyLast) {
+		if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2)) && !flyLast) {
 			flyState = !flyState;
 			flyLast = true;
 		}
-		else if(!(controller.get_digital(pros::E_CONTROLLER_DIGITAL_X))) {
+		else if(!(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2))) {
 			flyLast = false;
 		}
 
 		if(flyState == true) {
-			Fly.move_voltage(10000);
+			goalRPM = 450/600 * 3000;
+			//12 volts = max Voltage, 3000 rpm is max rpm
+			//maxV/maxRPM -> 4mV/RPM, each RPM you want, multiply by 4 to get power in volts
+			int holdPower = goalRPM * 4;
+			if(Fly.get_actual_velocity() < (goalRPM - 150)) {
+				Fly.move_voltage(12000);
+			}
+			else {
+				controller.rumble(".");
+				Fly.move_voltage(holdPower);
+			}
 		}
 		else {
+			controller.rumble("");
 			Fly.move_velocity(0);
 		}
 
-		if(Fly.get_actual_velocity() > 450) {
-			controller.rumble(".");
-		}
 		pros::lcd::print(7, "Fly: %f\n", Fly.get_actual_velocity());
 
 		pros::delay(10);
@@ -251,12 +259,38 @@ void autonomous() {
  * task, not resume it from where it left off.
  */
 void opcontrol() {
-	PTO = true;
+	PTO = false;
 
 	while(true) {
-			pros::delay(10);
 		
-			int a4 = 120 * controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
+			pros::delay(10);
+			pros::lcd::print(3, "Inertial: %f\n", inertial.get_rotation());
+
+			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
+				pivot(90);
+			}
+
+			bool ptoState = false;
+			bool ptoLast = false;
+			if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)) && !ptoLast) {
+				ptoState = !ptoState;
+				ptoLast = true;
+			}
+			else if(!(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B))) {
+				ptoLast = false;
+			}
+
+			if(ptoState == true) {
+				PTO = true;
+				ptoPiston.set_value(true);
+			}
+			else {
+				PTO = false;
+				ptoPiston.set_value(false);
+			}
+
+
+			int a4 = 120 * controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
 			int a3 = 120 * controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
 			FL.move_voltage(a4 + a3);
 			FR.move_voltage(a4 - a3);
@@ -266,6 +300,7 @@ void opcontrol() {
 				MR_intake.move_voltage(a4 + a3);
 			}
 			else{
+				
 				if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP)) {
 					ML_intake.move_voltage(-12000);
 					MR_intake.move_voltage(12000);
@@ -283,9 +318,9 @@ void opcontrol() {
 			BL.move_voltage(a4 + a3);
 			BR.move_voltage(a4 - a3);
 			
-			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
+			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)) {
 				Indexer.move_voltage(12000);
-				pros::delay(300);
+				pros::delay(350);
 				Indexer.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
 				Indexer.brake();
 			}
@@ -518,16 +553,8 @@ double avg_l() {
 	return (fabs(FL.get_position()) + fabs(BL.get_position())) / 2;
 }
 
-void goToPoint(double startX, double startY, double endX, double endY, double speed) {
-	int changeX = 0 - startX;
-	int changeY = 0 - startY;
-	startX+=changeX;
-	startY+=changeY;
-	endX+=changeX;
-	endY+=changeY;
-
-	//in radians
-	double turn = atan2(endY, endX) * radiansToDegrees;
-	pivot(turn);
+void autoAim(double rX, double rY, double gX, double gY) {
+	float theta = atan2((gY-rY), (gX-rX));
+	turn(theta);
 }
 

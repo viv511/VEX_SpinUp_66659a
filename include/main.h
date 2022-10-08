@@ -86,7 +86,7 @@ double average_encoders();
 double avg_r();
 double avg_l();
 
-void goToPoint(double startX, double startY, double endX, double endY, double speed);
+void autoAim(double rX, double rY, double gX, double gY);
 
 #ifdef __cplusplus
 }
