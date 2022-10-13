@@ -8,6 +8,16 @@
 #include <filesystem>
 #include <cmath>
 
+
+// // Create grapher
+// std::shared_ptr<graphy::AsyncGrapher> grapher(new graphy::AsyncGrapher("Flywheel Velocity vs. Time"));
+
+// // Add data types
+// grapher->addDataType("Desired Vel", COLOR_ORANGE);
+// grapher->addDataType("Actual Vel", COLOR_AQUAMARINE);
+
+// // Start grapher task
+// grapher->startTask();
 //--------------------------// Odometry //--------------------------//			
 
 //Utility
@@ -152,11 +162,13 @@ void flySpeed() {
 		}
 
 		if(flyState == true) {
-			goalRPM = 450/600 * 3000;
+			int goalSpeed = 450;
+			goalRPM = goalSpeed/600 * 3000;
 			//12 volts = max Voltage, 3000 rpm is max rpm
-			//maxV/maxRPM -> 4mV/RPM, each RPM you want, multiply by 4 to get power in volts
-			int holdPower = goalRPM * 4;
-			if(Fly.get_actual_velocity() < (goalRPM - 150)) {
+			//hold power = goalRPM * maxV/maxRPM
+			int holdPower = goalRPM * 12000/3000;
+
+			if(Fly.get_actual_velocity() < (goalSpeed - 20)) {
 				Fly.move_voltage(12000);
 			}
 			else {
@@ -165,8 +177,7 @@ void flySpeed() {
 			}
 		}
 		else {
-			controller.rumble("");
-			Fly.move_velocity(0);
+			Fly.move_voltage(0);
 		}
 
 		pros::lcd::print(7, "Fly: %f\n", Fly.get_actual_velocity());
@@ -192,9 +203,9 @@ void on_center_button() {
  * to keep execution time for this mode under a few seconds.
  */
 void initialize() {
-	
 	pros::lcd::initialize();
 	inertial.reset();
+	pros::delay(2000);
 	inertial.set_rotation(0);
 
 	backEncoder.reset();
@@ -206,6 +217,7 @@ void initialize() {
 
 	pros::Task odom (odometry);
 	pros::Task flywheelstuff (flySpeed);
+	Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 }
 
 /**
@@ -267,7 +279,14 @@ void opcontrol() {
 			pros::lcd::print(3, "Inertial: %f\n", inertial.get_rotation());
 
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
-				pivot(90);
+				pivot(10);
+			}
+			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
+				for(int i=0; i<4; i++) {
+					drive(600);
+					turn(90);
+					pros::delay(500);
+				}
 			}
 
 			bool ptoState = false;
@@ -290,14 +309,16 @@ void opcontrol() {
 			}
 
 
-			int a4 = 120 * controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
-			int a3 = 120 * controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-			FL.move_voltage(a4 + a3);
-			FR.move_voltage(a4 - a3);
+			int a4 = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
+			int a3 = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+			FL.move(a4 + a3);
+			FR.move(a4 - a3);
+			BL.move(a4 + a3);
+			BR.move(a4 - a3);
 
 			if(PTO == true) {
-				ML_intake.move_voltage(a4 - a3);
-				MR_intake.move_voltage(a4 + a3);
+				ML_intake.move(a4 + a3);
+				MR_intake.move(a4 - a3);
 			}
 			else{
 				
@@ -315,12 +336,11 @@ void opcontrol() {
 				}
 			}
 
-			BL.move_voltage(a4 + a3);
-			BR.move_voltage(a4 - a3);
+			
 			
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)) {
 				Indexer.move_voltage(12000);
-				pros::delay(350);
+				pros::delay(200);
 				Indexer.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
 				Indexer.brake();
 			}
@@ -442,7 +462,6 @@ void turn(double angle) {
             integral = 0;
         }
 		power = (error * kP) + (integral * kI) + (derivative*kD);
-		power*=0.9;
 
 		FR.move_velocity(power);
 		FL.move_velocity(power);
@@ -537,11 +556,7 @@ void reset_encoder() {
 	BR.tare_position();
 }
 double average_encoders() {
-	// return (fabs(FR.get_position())+fabs(FL.get_position())+fabs(BL.get_position()) +
-	// 	fabs(ML.get_position()) +
-	// 	fabs(BR.get_position()) +
-	// 	fabs(MR.get_position())) / 6;
-	return 1.2;
+	return (fabs(FR.get_position())+fabs(FL.get_position())+fabs(BL.get_position()) + fabs(BR.get_position()))/ 6;
 }
 
 double avg_r() {
