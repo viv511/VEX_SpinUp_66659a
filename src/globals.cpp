@@ -4,8 +4,8 @@
 pros::Motor FL(7, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEGREES);
 pros::Motor FR(17, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEGREES);
 
-pros::Motor ML_intake(1, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEGREES);
-pros::Motor MR_intake(2, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor ML_intake(1, pros::E_MOTOR_GEARSET_18, true, pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor MR_intake(2, pros::E_MOTOR_GEARSET_18, true, pros::E_MOTOR_ENCODER_DEGREES);
 
 pros::Motor BL(11, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEGREES);
 pros::Motor BR(16, pros::E_MOTOR_GEARSET_06, true, pros::E_MOTOR_ENCODER_DEGREES);
@@ -24,6 +24,7 @@ pros::Rotation rightEncoder(5);
 
 
 // pistons
-pros::ADIDigitalOut ptoPiston('H');
+pros::ADIDigitalOut endgame1('E');
+pros::ADIDigitalOut endgame2('E');
 // pros::ADIDigitalOut pistonB1('A');
 // pros::ADIDigitalOut pistonB2('A');

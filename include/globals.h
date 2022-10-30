@@ -26,7 +26,8 @@ extern pros::Rotation leftEncoder;
 extern pros::Rotation rightEncoder;
 
 //pistons
-extern pros::ADIDigitalOut ptoPiston;
+extern pros::ADIDigitalOut endgame1;
+extern pros::ADIDigitalOut endgame2;
 // extern pros::ADIDigitalOut pistonB1;
 // extern pros::ADIDigitalOut pistonB2;
 

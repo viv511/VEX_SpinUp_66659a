@@ -38,6 +38,7 @@
 #include "api.h"
 
 
+
 /**
  * You should add more #includes here
  */
@@ -74,6 +75,13 @@ void opcontrol(void);
 
 void odometry(void);
 void flySpeed(void);
+
+void forward(double sec);
+void halfRoll();
+void tripleShot(double speed);
+void leftAuto();
+void soloAuto();
+void rightAuto();
 
 void pivot(double angle);
 void turn(double angle);
