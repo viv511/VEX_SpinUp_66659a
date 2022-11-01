@@ -190,7 +190,7 @@ void flySpeed() {
         int goalRPM = target_speed/600 * 3000;
         int holdPower = goalRPM * 12000/3000;
     
-        double current_speed = Fly.get_actual_velocity(); // get the current rpm. I would recommend using something like a Simple Moving Average filter to smooth out the rpm
+        double current_speed = Fly.get_actual_velocity(); 
 
 		if(target_speed == 0) {
 			Fly.move_voltage(0); // if the target rpm is 0, stop the flywheel
@@ -265,7 +265,7 @@ void on_center_button() {
  * to keep execution time for this mode under a few seconds.
  */
 void initialize() {
-	endgame1.set_value(true);
+	endgame1.set_value(false);
 	pros::lcd::initialize();
 	inertial.reset();
 	while(inertial.is_calibrating()) {
@@ -349,7 +349,7 @@ void opcontrol() {
 			// 	rightAuto();
 			// }
 			// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
-			// 	soloAuto();
+			// 	rightAuto();
 			// }
 
 			if(flyState == true) {
@@ -369,7 +369,7 @@ void opcontrol() {
 			//endgame
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
 				if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_DOWN)) {
-					endgame1.set_value(false);
+					endgame1.set_value(true);
 				}
 			}
 
@@ -409,11 +409,23 @@ void opcontrol() {
 }
 
 void halfRoll() {
-	ML_intake.move_voltage(6000);
-	MR_intake.move_voltage(-6000);
-	pros::delay(140);
+	ML_intake.move_voltage(12000);
+	MR_intake.move_voltage(-12000);
+	pros::delay(150);
 	ML_intake.brake();
 	MR_intake.brake();
+}
+
+void back(double sec) {
+	FL.move_velocity(-600);
+	FR.move_velocity(600);
+	BL.move_velocity(-600);
+	BR.move_velocity(600);
+	pros::delay(sec);
+	FL.move_velocity(0);
+	FR.move_velocity(0);
+	BL.move_velocity(0);
+	BR.move_velocity(0);
 }
 
 void tripleShot(double speed) {
@@ -497,45 +509,49 @@ void soloAuto() {
 }
 
 void rightAuto() {
-	move_encoder(1100, 300);
+	move_encoder(1100, 400);
 	turn(90);
-	pros::delay(100);
-	forward(400);
+	pros::delay(50);
+	forward(350);
 
-	ML_intake.move_voltage(7000);
-	MR_intake.move_voltage(-7000);
-	pros::delay(250);
+	ML_intake.move_voltage(12000);
+	MR_intake.move_voltage(-12000);
+	pros::delay(150);
 	ML_intake.brake();
 	MR_intake.brake();
 
 	move_encoder(100, -200);
 
-	pros::delay(100);
-	turn(90);
-	pros::delay(50);
-	move_encoder(2000, 300);
 	pros::delay(50);
 	turn(90);
-	move_encoder(300, -400);
-
+	pros::delay(50);
+	move_encoder(1900, 400);
+	pros::delay(50);
+	turn(90);
+	
+	back(500);
 	ML_intake.move_voltage(-12000);
 	MR_intake.move_voltage(12000);
-	move_encoder(2100, 300);
+	pros::delay(50);
+	move_encoder(2400, 400);
 
-	turn(-135);
+	turn(-138);
 
-	set_target_rpm(460);
-	pros::delay(2500);
+	set_target_rpm(450);
+
+	pros::delay(2000);
 	ML_intake.move_voltage(0);
 	MR_intake.move_voltage(0);
+	pros::delay(500);
 
 	Indexer.move_voltage(12000);
 	pros::delay(200);
 	Indexer.brake();
 
 	pros::delay(800);
+
 	Indexer.move_voltage(12000);
-	pros::delay(1000);
+	pros::delay(400);
 	Indexer.brake();
 
 	set_target_rpm(0);
@@ -546,29 +562,26 @@ void leftAuto() {
 	halfRoll();
 	move_encoder(80, -200);
 	turn(-90);
-
+	pros::delay(100);
 	move_encoder(2100, 400);
 	pros::delay(100);
 	
 	turn(90);
+	forward(400);
 	pros::delay(100);
-	move_encoder(1000, -400);
+	move_encoder(1400, -400);
 	pros::delay(50);
-	turn(-32);
+	turn(-30);
 	pros::delay(50);
 	move_encoder(750, -300);
 	
 	set_target_rpm(460);
 	pros::delay(2500);
-
+	
 	Indexer.move_voltage(12000);
-	pros::delay(300);
-	Indexer.brake();
-
 	pros::delay(800);
-	Indexer.move_voltage(12000);
-	pros::delay(1000);
 	Indexer.brake();
+
 
 	set_target_rpm(0);
 }

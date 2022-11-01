@@ -76,6 +76,7 @@ void opcontrol(void);
 void odometry(void);
 void flySpeed(void);
 
+void back(double sec);
 void forward(double sec);
 void halfRoll();
 void tripleShot(double speed);
