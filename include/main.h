@@ -1,4 +1,3 @@
-
 /**
  * \file main.h
  *
@@ -98,6 +97,10 @@ double avg_r();
 double avg_l();
 
 void autoAim(double rX, double rY, double gX, double gY);
+
+double get_target_rpm();
+void set_target_rpm(double targetrpm);
+double SMA_Filter(double rawData);
 
 #ifdef __cplusplus
 }

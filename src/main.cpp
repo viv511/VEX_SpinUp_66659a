@@ -7,7 +7,7 @@
 #include <fstream>
 #include <filesystem>
 #include <cmath>
-
+#include <queue>
 
 // // Create grapher
 // std::shared_ptr<graphy::AsyncGrapher> grapher(new graphy::AsyncGrapher("Flywheel Velocity vs. Time"));
@@ -136,47 +136,73 @@ void odometry() {
 	}
 }
 
+//--------------------------// Filter //--------------------------//	
+std::queue<double> filterData;
+//Number of elements to average
+int window = 3;
+//Running sum
+double windowTotal = 0;
+
+double SMA_Filter(double rawData) {
+	//Add to the running sum
+	windowTotal += rawData;
+
+	//Once the queue gets filled up
+	if(filterData.size() >= window) {
+		//Remove first num from queue & sum, then add new num (essentially shifting the queue)
+		windowTotal -= filterData.front();
+		filterData.pop();
+	}
+	//Add to the queue
+	filterData.push(rawData);
+	
+	//Apply average
+	double smoothedData = (windowTotal / filterData.size());
+
+	return smoothedData;
+}
+
+
+
 static double target_rpm = 0;
 static double threshold = 20;
 static bool is_ready_to_fire = false;
 
 pros::Mutex flywheel_target_m; // mutex for target rpm
-pros::Mutex flywheel_ready_m; // mutex for ready to fire
+// pros::Mutex flywheel_ready_m; // mutex for ready to fire
 
 void set_target_rpm(double targetrpm) {
-    flywheel_target_m.take(); //take the mutex, letting others know we are accessing the target rpm
+    flywheel_target_m.take(); //take the mutex
     target_rpm = targetrpm; //set the target rpm
-    flywheel_target_m.give(); //give the mutex back
+    flywheel_target_m.give(); //return the mutex back
 }
 
 double get_target_rpm() {
     double targetrpm;
-    flywheel_target_m.take(); //take the mutex, letting others know we are accessing the target rpm
+    flywheel_target_m.take(); //take the mutex
     targetrpm = target_rpm; //get the target rpm
-    flywheel_target_m.give(); //give the mutex back
+    flywheel_target_m.give(); //return the mutex 
     return targetrpm;
 }
 
-void set_flywheel_ready(bool ready) {
-    flywheel_ready_m.take(); //take the mutex, letting others know we are accessing the ready to fire variable
-    is_ready_to_fire = ready; //set the ready to fire variable
-    flywheel_ready_m.give(); //give the mutex back
-}
+// void set_flywheel_ready(bool ready) {
+//     flywheel_ready_m.take(); //take the mutex, letting others know we are accessing the ready to fire variable
+//     is_ready_to_fire = ready; //set the ready to fire variable
+//     flywheel_ready_m.give(); //give the mutex back
+// }
 
-bool get_flywheel_ready() {
-    bool ready;
-    flywheel_ready_m.take(); //take the mutex, letting others know we are accessing the ready to fire variable
-    ready = is_ready_to_fire; //get the ready to fire variable
-    flywheel_ready_m.give(); //give the mutex back
-    return ready;
-}
+// bool get_flywheel_ready() {
+//     bool ready;
+//     flywheel_ready_m.take(); //take the mutex, letting others know we are accessing the ready to fire variable
+//     ready = is_ready_to_fire; //get the ready to fire variable
+//     flywheel_ready_m.give(); //give the mutex back
+//     return ready;
+// }
 
 bool flyState = false;
 bool flyLast = false;
 //--------------------------// FlyWheel //--------------------------//	
 void flySpeed() {
-	
-
 	while(true) {
 		if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2)) && !flyLast) {
 			flyState = !flyState;
@@ -190,20 +216,20 @@ void flySpeed() {
         int goalRPM = target_speed/600 * 3000;
         int holdPower = goalRPM * 12000/3000;
     
-        double current_speed = Fly.get_actual_velocity(); 
+        double current_speed = Fly.get_actual_velocity(); //Get velocity (add filter here)
 
 		if(target_speed == 0) {
 			Fly.move_voltage(0); // if the target rpm is 0, stop the flywheel
-            set_flywheel_ready(false); // the flywheel is not ready to fire
+            // set_flywheel_ready(false); // the flywheel is not ready to fire
 		}
 		else if(fabs(current_speed - target_speed) < threshold) {
 			Fly.move_voltage(holdPower);
-			set_flywheel_ready(true);
+			// set_flywheel_ready(true);
 			controller.rumble(".");
 		}
 		else {
             Fly.move_voltage(current_speed < target_speed ? 12000 : 0); // if the flywheel is not within the threshold, bang bang the flywheel speed
-            set_flywheel_ready(false); // set the flywheel ready to fire variable to false
+            // set_flywheel_ready(false); // set the flywheel ready to fire variable to false
         }
 
 		pros::delay(10);
