@@ -41,7 +41,6 @@
 /**
  * You should add more #includes here
  */
-// #include "Graphy/Grapher.hpp"
 // #include "okapi/api.hpp"
 //#include "pros/api_legacy.h"
 
@@ -72,35 +71,26 @@ void disabled(void);
 void competition_initialize(void);
 void opcontrol(void);
 
-void odometry(void);
-void flySpeed(void);
-
-void back(double sec);
-void forward(double sec);
-void halfRoll();
-void tripleShot(double speed);
-void leftAuto();
-void soloAuto();
-void rightAuto();
-
 void pivot(double angle);
 void turn(double angle);
 
 void drive(int ticks);
-
-void tbh(double speed);
+void DrivePD(double ticks, double limit);
+void SpecialPD(int leftTicks, int rightTicks, double limit);
 
 void move_encoder(double ticks, double speed);
 void reset_encoder(void);
 double average_encoders();
+double average_vel();
 double avg_r();
 double avg_l();
 
-void autoAim(double rX, double rY, double gX, double gY);
+void leftAuto();
+void rightAuto();
+void progSkills();
 
-double get_target_rpm();
-void set_target_rpm(double targetrpm);
-double SMA_Filter(double rawData);
+void backTime(int speed, double sec);
+
 
 #ifdef __cplusplus
 }
@@ -114,3 +104,4 @@ double SMA_Filter(double rawData);
 #endif
 
 #endif  // _PROS_MAIN_H_
+

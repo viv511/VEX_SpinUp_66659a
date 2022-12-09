@@ -6,29 +6,29 @@ using namespace pros;
 
 extern pros::Motor FL;
 extern pros::Motor FR;
-extern pros::Motor ML_intake;
-extern pros::Motor MR_intake;
+extern pros::Motor ML;
+extern pros::Motor MR;
 extern pros::Motor BL;
 extern pros::Motor BR;
 
 extern pros::Motor Fly;
-extern pros::Motor Indexer;
+extern pros::Motor Roller;
+extern pros::Motor IIR;
 
-extern pros::Motor Intake;
+//motor group
+extern pros::Motor_Group LeftDT;
+extern pros::Motor_Group RightDT;
 
 //controller
 extern pros::Controller controller;
-//sensor
-extern pros::Imu inertial;
 
-extern pros::ADIEncoder backEncoder;   
-extern pros::Rotation leftEncoder;
+extern pros::IMU inertial; 
+
+extern pros::ADIEncoder backEncoder;
 extern pros::Rotation rightEncoder;
 
-//pistons
+// //pistons
 extern pros::ADIDigitalOut endgame1;
 extern pros::ADIDigitalOut endgame2;
-// extern pros::ADIDigitalOut pistonB1;
-// extern pros::ADIDigitalOut pistonB2;
 
 #endif
