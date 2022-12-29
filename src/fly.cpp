@@ -23,12 +23,12 @@ double getFlywheelRPM() {
     return tRPM;
 }
 
-bool flyState = false;
-bool flyLast = false;
-double currentSpeed = 0;
-
 //--------------------------// FlyWheel //--------------------------//	
 void flySpeed() {
+	bool flyState = false;
+	bool flyLast = false;
+	double currentSpeed = 0;
+
 	Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 
 	while(true) {
@@ -44,7 +44,7 @@ void flySpeed() {
 		float goalRPM = target_speed/600 * 3000;
 		float holdPower = goalRPM * 12000/3000;
 	
-		currentSpeed = SMA_Filter(Fly.get_actual_velocity());
+		currentSpeed = SMA_Filter(6 * Fly.get_actual_velocity());
 
 		if(target_speed == 0) {
 			Fly.move_voltage(0);
@@ -62,15 +62,31 @@ void flySpeed() {
 			}
 		}
 		
-		// pros::lcd::print(6, "Fly: %f\n", currentSpeed);
-		pros::delay(20);		
+		pros::lcd::print(6, "Fly: %f\n", currentSpeed);
+		pros::delay(20);
+
+
+		if(flyState == true) {
+			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)){ 
+				setFlywheelRPM(1800);
+			}
+			else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
+				setFlywheelRPM(2500);
+			}
+			else {
+				setFlywheelRPM(2200);
+			}
+		}
+		else {
+			setFlywheelRPM(0);
+		}
 	}
 }
 
 //--------------------------// Filter //--------------------------//	
 std::queue<double> smaData;
 //Number of elements to average
-int window = 20;
+int window = 15;
 //Running sum
 double windowTotal = 0;
 

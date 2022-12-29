@@ -1,5 +1,9 @@
 #include "main.h"
 #include "globals.h"
+#include "odom.h"
+#include "fly.h"
+#include "variables.h"
+#include "driveauto.h"
 #include "pros/misc.h"
 #include "pros/motors.h"
 #include "pros/optical.h"
@@ -7,9 +11,11 @@
 #include <fstream>
 #include <filesystem>
 #include <cmath>
-#include "odom.h"
-#include "fly.h"
-#include "variables.h"
+
+
+
+pros::Motor_Group LeftDT ({FL, ML, BL});
+pros::Motor_Group RightDT ({FR, MR, BR});
 
 /**
  * A callback function for LLEMU's center button.
@@ -29,10 +35,11 @@ void on_center_button() {
  */
 void initialize() {
 	inertial.reset();
-	pros::delay(2000);
-	inertial.set_rotation(startTheta);
-
 	pros::lcd::initialize();
+
+	pros::delay(2000);
+	inertial.set_rotation(0);
+
 	pros::Task odomStuff (odometry);
 	pros::Task flywheelStuff (flySpeed);
 }
@@ -71,8 +78,7 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-	// leftAuto();
-	rightAuto();
+
 }
 /**
  * 
@@ -88,10 +94,8 @@ void autonomous() {
  * operator control task will be stopped. Re-enabling the robot will restart the
  * task, not resume it from where it left off.
  */
-float latMove = 0;
-float sideMove = 0;
-float latVolts = 0;
-float sideVolts = 0;
+float tankL = 0;
+float tankR = 0;
 
 void opcontrol() {
 	LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
@@ -99,20 +103,13 @@ void opcontrol() {
 
 	while(true) {
 		//TESTING
-		pros::lcd::print(1, "X: %f\n", x_global);
-		pros::lcd::print(2, "Y: %f\n", y_global);
-		pros::lcd::print(3, "Theta: %f\n", curTheta * 180/3.141592);
+		// controller.rumble(".");
 
-		latMove = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-		sideMove = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
-		latVolts = latMove * 100;
-		sideVolts = sideMove * 100;
-		LeftDT.move_voltage(latVolts + sideVolts);
-		RightDT.move_voltage(latVolts - sideVolts);
-		// latMove = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-		// sideMove = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y);
-		// LeftDT.move_voltage(latMove * 100);
-		// RightDT.move_voltage(sideMove * 100);
+		tankL = 100 * controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+		tankR = 100 * controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+		LeftDT.move_voltage(tankL+tankR);
+		RightDT.move_voltage(tankL-tankR);
+
 
 		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
@@ -121,65 +118,26 @@ void opcontrol() {
 		}
 
 		//Intake
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
-			IIR.move_voltage(10000);
+		//Roller
+		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
+			IIR.move_voltage(-8000);
 		}
-		else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_DOWN)) {
-			IIR.move_voltage(-10000);
+		else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
+			IIR.move_voltage(12000);
 		}
-		else if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP)) || (controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) || (controller.get_digital(pros::E_CONTROLLER_DIGITAL_RIGHT))){
+		else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
+			IIR.move_voltage(-12000);
+		}
+		else{
 			IIR.move_voltage(0);
 		}
 
-		//Roller
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)){
-			Roller.move_voltage(8000);
-		}
-		else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)) {
-			Roller.move_voltage(-8000);
-		}
-		else{
-			Roller.move_voltage(0);
-		}
-
 		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)){
-			// DrivePD(2000, 1);
+			driveOdomAngPD(48, 0.8, 550, 250, 250);
 		}
 
 		pros::delay(10);
 	}
-}
-
-void leftAuto() {
-	//SET UP: 1-2 cm away from roller, directly in front
-	backTime(300, 150);
-	Roller.move_voltage(10000);
-	pros::delay(120);
-	Roller.move_voltage(0);
-}
-
-void rightAuto() {
-	//SET UP: disk width away from wall, on edge as far as we can be, forward facing towards the roller
-	Roller.move_voltage(-10000);
-	pros::delay(120);
-	Roller.move_voltage(0);
-	DrivePD(1400, 0.6);
-	pros::delay(50);
-	turn(-90);
-	pros::delay(250);
-	backTime(300, 300);
-	pros::delay(200);
-	Roller.move_voltage(10000);
-	pros::delay(120);
-	Roller.move_voltage(0);
-
-	//OPTIONAL SECOND PART (COMMENT IF NOT NEEDED - SCORES IN LOW GOAL)
-		DrivePD(600, 0.8);
-		pros::delay(50);
-		turn(92);
-		pros::delay(200);
-		backTime(600, 200);
-		DrivePD(1500, 1);
 }
 
 
@@ -231,8 +189,6 @@ void backTime(int speed, double sec) {
 }
 
 void turn(double angle) {
-	float u = 0;
-	pros::lcd::print(5, "Time: %f\n", u);
 	float targetError = 1.5;
 
 	inertial.tare_rotation();
@@ -246,7 +202,6 @@ void turn(double angle) {
 	double target = inertial.get_rotation() + angle;
 	
 	do {
-		pros::lcd::print(5, "Time: %f\n", u);
 		error = target - inertial.get_rotation();
 		derivative = error - prevError;
 
@@ -283,7 +238,6 @@ void reset_encoder() {
 	RightDT.tare_position();
 }
 double average_encoders() {
-	// return (fabs(FR.get_position())+fabs(FL.get_position())+fabs(BL.get_position()) + fabs(BR.get_position()))/4;
 	return (fabs(FR.get_position())+fabs(FL.get_position())+fabs(BL.get_position()) + fabs(BR.get_position()) + fabs(MR.get_position()) + fabs(ML.get_position()))/ 6;
 }
 

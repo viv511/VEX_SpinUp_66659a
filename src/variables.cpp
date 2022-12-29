@@ -8,3 +8,5 @@ int startTheta = 0;
 
 int goalX = 0;
 int goalY = 0;
+
+float absoluteRight = 0;

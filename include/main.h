@@ -85,8 +85,6 @@ double average_vel();
 double avg_r();
 double avg_l();
 
-void leftAuto();
-void rightAuto();
 void progSkills();
 
 void backTime(int speed, double sec);

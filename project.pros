@@ -1,7 +1,7 @@
 {
   "py/object": "pros.conductor.project.Project",
   "py/state": {
-    "project_name": "666-SpinUp",
+    "project_name": "Frank Da Tank",
     "target": "v5",
     "templates": {
       "Graphy": {
@@ -322,7 +322,7 @@
     },
     "upload_options": {
       "description": "Vex SpinUp 22-23",
-      "icon": "X",
+      "icon": "pros",
       "slot": 1
     }
   }

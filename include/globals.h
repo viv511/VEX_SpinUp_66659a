@@ -12,7 +12,6 @@ extern pros::Motor BL;
 extern pros::Motor BR;
 
 extern pros::Motor Fly;
-extern pros::Motor Roller;
 extern pros::Motor IIR;
 
 //motor group
@@ -24,7 +23,7 @@ extern pros::Controller controller;
 
 extern pros::IMU inertial; 
 
-extern pros::ADIEncoder backEncoder;
+// extern pros::Rotation backEncoder;
 extern pros::Rotation rightEncoder;
 
 // //pistons

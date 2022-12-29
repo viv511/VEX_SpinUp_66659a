@@ -13,4 +13,5 @@ extern int startTheta;
 extern int goalX;
 extern int goalY;
 
+extern float absoluteRight;
 #endif
