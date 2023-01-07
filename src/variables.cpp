@@ -9,4 +9,6 @@ int startTheta = 0;
 int goalX = 0;
 int goalY = 0;
 
+bool flyState = false;
+
 float absoluteRight = 0;

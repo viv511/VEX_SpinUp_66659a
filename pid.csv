@@ -1,0 +1,13 @@
+
+
+
+  _____  _____   ____   _____ 
+ |  __ \|  __ \ / __ \ / ____|          Powered by PROS for VEX V5
+ | |__) | |__) | |  | | (___      Version:                          3.7.1
+ |  ___/|  _  /| |  | |\___ \     Uptime:                         9.747 s
+ | |    | | \ \| |__| |____) |    Compiled:          Jan  5 2023 17:04:33
+ |_|    |_|  \_\\____/|_____/     Directory:       EX/SpinUp/spinup66659a
+
+
+WARNING - pros.serial.terminal.terminal:reader - Connection to /dev/cu.usbmodem14203 broken - pros-cli version:3.4.1
+WARNING - pros.serial.terminal.terminal:stop - Stopping terminal - pros-cli version:3.4.1

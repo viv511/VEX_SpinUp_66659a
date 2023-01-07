@@ -72,7 +72,6 @@ void competition_initialize(void);
 void opcontrol(void);
 
 void pivot(double angle);
-void turn(double angle);
 
 void drive(int ticks);
 void DrivePD(double ticks, double limit);
@@ -86,6 +85,7 @@ double avg_r();
 double avg_l();
 
 void progSkills();
+void nonRoller();
 
 void backTime(int speed, double sec);
 

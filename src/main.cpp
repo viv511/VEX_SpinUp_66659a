@@ -12,8 +12,6 @@
 #include <filesystem>
 #include <cmath>
 
-
-
 pros::Motor_Group LeftDT ({FL, ML, BL});
 pros::Motor_Group RightDT ({FR, MR, BR});
 
@@ -34,10 +32,9 @@ void on_center_button() {
  * to keep execution time for this mode under a few seconds.
  */
 void initialize() {
-	inertial.reset();
 	pros::lcd::initialize();
 
-	pros::delay(2000);
+	inertial.reset(true);
 	inertial.set_rotation(0);
 
 	pros::Task odomStuff (odometry);
@@ -78,7 +75,7 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-
+	nonRoller();
 }
 /**
  * 
@@ -105,8 +102,8 @@ void opcontrol() {
 		//TESTING
 		// controller.rumble(".");
 
-		tankL = 100 * controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-		tankR = 100 * controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+		tankL = 80 * controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+		tankR = 80 * controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
 		LeftDT.move_voltage(tankL+tankR);
 		RightDT.move_voltage(tankL-tankR);
 
@@ -133,13 +130,66 @@ void opcontrol() {
 		}
 
 		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)){
-			driveOdomAngPD(48, 0.8, 550, 250, 250);
+			turn(90);
 		}
-
-		pros::delay(10);
 	}
 }
 
+void nonRoller() {
+	driveOdomAngPD(25, 0.8, 550, 0, 50);
+
+	// pros::delay(100);
+
+	turn(90);
+
+	// pros::delay(100);
+
+	driveOdomAngPD(6, 1, 400, 0, 0);
+
+	IIR.move_voltage(-6000);
+	pros::delay(100);
+	IIR.move_voltage(0);
+
+	driveOdomAngPD(-3, 1, 400, 0, 50);
+
+	pros::delay(200);
+
+	turn(125);
+
+	IIR.move_voltage(12000);
+	driveOdomAngPD(40, 0.5, 400, 0, 25);
+
+	flyState = true;
+	setFlywheelRPM(2800);
+	pros::delay(100);
+
+	turn(-97);
+	
+	driveOdomAngPD(-9, 0.8, 400, 0, 100);
+
+	pros::delay(2000);
+	IIR.move_voltage(0);
+	controller.rumble(".");
+	IIR.move_voltage(-12000);
+	pros::delay(150);
+	IIR.move_voltage(0);	
+
+
+	pros::delay(1200);
+	controller.rumble(".");
+	IIR.move_voltage(-12000);
+	pros::delay(200);
+	IIR.move_voltage(0);
+
+	pros::delay(1000);
+	controller.rumble(".");
+	IIR.move_voltage(-12000);
+	pros::delay(500);
+	IIR.move_voltage(0);
+
+
+	flyState = false;
+}
 
 void DrivePD(double ticks, double limit) {
 	//limit = decimal percent (0.00-1.00)
@@ -186,51 +236,6 @@ void backTime(int speed, double sec) {
 	pros::delay(sec);
 	LeftDT.move_velocity(0);
 	RightDT.move_velocity(0);
-}
-
-void turn(double angle) {
-	float targetError = 1.5;
-
-	inertial.tare_rotation();
-	double error = 0;
-	double prevError = 0;
-	double derivative = 0;
-	double power = 0;
-	double kP = 260;
-	double kD = 100;
-
-	double target = inertial.get_rotation() + angle;
-	
-	do {
-		error = target - inertial.get_rotation();
-		derivative = error - prevError;
-
-		power = (error * kP) + (derivative*kD);
-
-		RightDT.move_voltage(-power);
-		LeftDT.move_voltage(power);
-
-		pros::delay(10);
-
-		prevError = error;
-
-		// if(fabs(error) < targetError){
-		// 	u+=0.01;
-		// }
-
-		// if(u > 5.0) {
-		// 	controller.rumble(".");
-		// 	break;
-		// }
-
-	}while(fabs(target - inertial.get_rotation()) > 1.5);
-	RightDT.move_voltage(0);
-	LeftDT.move_voltage(0);
-	RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-	LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-	RightDT.brake();
-	LeftDT.brake();
-
 }
 
 void reset_encoder() {
@@ -345,12 +350,12 @@ void progSkills() {
 // 	RightDT.brake();
 // }
 
-// double avg_r() {
-// 	return (fabs(FR.get_position())+fabs(MR.get_position())+fabs(BR.get_position()) / 3);
-// }
-// double avg_l() {
-// 	return (fabs(FL.get_position())+fabs(ML.get_position())+fabs(BL.get_position()) / 3);
-// }
+double avg_r() {
+	return (fabs(FR.get_position())+fabs(MR.get_position())+fabs(BR.get_position()) / 3);
+}
+double avg_l() {
+	return (fabs(FL.get_position())+fabs(ML.get_position())+fabs(BL.get_position()) / 3);
+}
 
 
 // void drive(int ticks) {

@@ -24,9 +24,10 @@ double getFlywheelRPM() {
 }
 
 //--------------------------// FlyWheel //--------------------------//	
+
+bool flyLast = false;
+
 void flySpeed() {
-	bool flyState = false;
-	bool flyLast = false;
 	double currentSpeed = 0;
 
 	Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
@@ -71,7 +72,7 @@ void flySpeed() {
 				setFlywheelRPM(1800);
 			}
 			else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
-				setFlywheelRPM(2500);
+				setFlywheelRPM(2800);
 			}
 			else {
 				setFlywheelRPM(2200);
@@ -86,7 +87,7 @@ void flySpeed() {
 //--------------------------// Filter //--------------------------//	
 std::queue<double> smaData;
 //Number of elements to average
-int window = 15;
+int window = 4;
 //Running sum
 double windowTotal = 0;
 

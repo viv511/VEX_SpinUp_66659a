@@ -13,5 +13,7 @@ extern int startTheta;
 extern int goalX;
 extern int goalY;
 
+extern bool flyState;
+
 extern float absoluteRight;
 #endif
