@@ -46,6 +46,8 @@ void odometry() {
 	// backEncoder.set_position(0);
 
 	while(true) {
+		pros::lcd::print(1, "inches: %f\n", absoluteRight);
+		
 		rightCurrent = -1 * rightEncoder.get_position();
 		// backCurrent = backEncoder.get_position();	
 		
@@ -91,7 +93,6 @@ void odometry() {
 		// y_global += (cos(offset) * x_local - sin(offset) * y_local);
 		
 		pros::delay(10);
-		pros::lcd::print(1, "inches: %f\n", absoluteRight);
 	}
 }
 

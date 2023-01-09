@@ -86,6 +86,8 @@ double avg_l();
 
 void progSkills();
 void nonRoller();
+void RollerSide();
+void nonRollerStraight();
 
 void backTime(int speed, double sec);
 

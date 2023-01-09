@@ -82,10 +82,14 @@ void driveOdomAngPD(int inches, double limit, double f_kP, double f_kD, double f
             }
         }
 
-        if(fabs(latError) < 4) {
+        if(fabs(latError) < 2) {
             angPower = 0;
+        }
+
+        if(fabs(latError) < 3) {
             timeAtError+=10;
         }
+        
 
         if(timeAtError > 1000) {
             break;
@@ -168,9 +172,11 @@ void turn(double angle) {
 	double prevError = 0;
 	double derivative = 0;
 	double power = 0;
-	double kD = 120;
 	double kP = 130;
-	// double kD = 127;
+	double kD = 180;
+    double kI = 10;
+    double integral = 0;
+    //315, 270, 10
 
 	double target = angle + inertial.get_rotation();
 	
@@ -179,16 +185,14 @@ void turn(double angle) {
 		derivative = error - prevError;
 		prevError = error;
 
-		power = (error * kP) + (derivative*kD);
+        if(std::signbit(error) != std::signbit(prevError)) {
+            integral = 0;
+        }
+        if(error > 15) {
+            integral = 0;
+        }
 
-        // if(fabs(power) > 12000 * 0.6) {
-        //     if(power > 0) {
-        //         power = 12000 * 0.6;
-        //     }
-        //     else {
-        //         power = -12000 * 0.6;
-        //     }
-        // }
+		power = (error * kP) + (derivative*kD) + (integral * kI);
 
 		RightDT.move_voltage(-power);
 		LeftDT.move_voltage(power);
@@ -242,31 +246,48 @@ void turn(double angle) {
     RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
 }
 
-void rotate(double angle, float kP, float kD) {
-    float target = inertial.get_rotation() + angle;
-    float turnP = kP;
-    float turnD = kD;
-    float prevError = angle;
+void rotate(double angle) {
+    int totalTime = 0;
+	double error = 0;
+	double prevError = 0;
+	double derivative = 0;
+	double power = 0;
 
-    do {
-        float error = target - inertial.get_rotation();
-        float derivative = error - prevError;
-        prevError = error;
+    double kP = 130;
+    double kI = 8;
+    double integral = 0;
+    double kD = 170;
 
-        float power = (error * turnP) + (derivative * turnD);
-        int dir = fabs(power)/power;
-        if(fabs(power) > 12000) {
-            power = dir * 12000;
-        }
+	double target = angle + inertial.get_rotation();
+	
+	do {
+		error = target - inertial.get_rotation();
+		derivative = error - prevError;
+        integral = integral + error;
+        totalTime+=10;
 
-        RightDT.move_voltage(-power);
+
+
+		RightDT.move_voltage(-power);
 		LeftDT.move_voltage(power);
 
-        pros::delay(10);
-
+        pros::lcd::print(3, "theta: %f\n", inertial.get_rotation());
         pros::lcd::print(4, "power: %f\n", power);
-        pros::lcd::print(5, "theta: %f\n", inertial.get_rotation());
+        pros::lcd::print(5, "error: %f\n", error);
 
-        std::cout << error << "," << power << "\n";
-    }while(fabs(target - inertial.get_rotation()) < 1);
+        pros::delay(15);
+        prevError = error;
+
+        if(totalTime > 2000) {
+            controller.rumble("-");
+            break;
+        }
+	}while(fabs(target - inertial.get_rotation()) > 0.5);
+
+    LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
+    RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
+    LeftDT.brake();
+    RightDT.brake();
+    LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
+    RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
 }
