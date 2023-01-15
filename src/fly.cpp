@@ -10,7 +10,7 @@ int maxRPM = 3000;
 
 pros::Mutex rpmMutex;
 double target_rpm = 0;
-double threshold = 100;
+double threshold = 25;
 
 void setFlywheelRPM(double targetRPM) {
     rpmMutex.take();
@@ -31,8 +31,8 @@ double getFlywheelRPM() {
 bool flyLast = false;
 
 void flySpeed() {
+	// int kP = 15;
 	Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
-	double currentSpeed = 0;
 
 	while(true) {
 		//Toggle Logic
@@ -46,52 +46,47 @@ void flySpeed() {
 
 		//Get flywheel target speed
 		float target_speed = getFlywheelRPM();
-		float holdPower = target_speed * maxVolt/maxRPM;
+		float holdPower =  target_speed * maxVolt/maxRPM;
 	
 		//Get current speed
 		currentSpeed = SMA_Filter(6 * Fly.get_actual_velocity());
 
+		//Get error
+		// float flyError = target_speed - currentSpeed; 
+
 		if(target_speed == 0) {
 			Fly.move_voltage(0);
+			readyShoot = false;
 		}
 		else if(fabs(currentSpeed - target_speed) < threshold) {
-			Fly.move_voltage(holdPower);
-			controller.rumble(".");
+			Fly.move_voltage(holdPower + 250);
+			readyShoot = true;
 		}
 		else {
 			if(currentSpeed < target_speed) {
 				Fly.move_voltage(12000);
+				readyShoot = false;
 			}
 			else{
 				Fly.move_voltage(0);
+				readyShoot = false;
 			}
 		}
 		
-		pros::lcd::print(6, "Fly: %f\n", currentSpeed);
+		// if(shootingFunc) {
+		// std::cout << currentSpeed << "," << target_speed << "\n";
+		// }
+		// pros::lcd::print(6, "error: %f\n", flyError);
+		        pros::lcd::print(5, "Fly: %f\n", currentSpeed);
+
 		pros::delay(20);
-
-
-		if(flyState == true) {
-			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)){ 
-				setFlywheelRPM(1800);
-			}
-			else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
-				setFlywheelRPM(2800);
-			}
-			else {
-				setFlywheelRPM(2200);
-			}
-		}
-		else {
-			setFlywheelRPM(0);
-		}
 	}
 }
 
 //--------------------------// Filter //--------------------------//	
 std::queue<double> smaData;
 //Number of elements to average
-int window = 5;
+int window = 4;
 //Running sum
 double windowTotal = 0;
 

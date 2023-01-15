@@ -14,6 +14,11 @@ extern int goalX;
 extern int goalY;
 
 extern bool flyState;
+extern bool readyShoot;
+extern bool shootingFunc;
+
+extern double currentSpeed;
 
 extern float absoluteRight;
+
 #endif
