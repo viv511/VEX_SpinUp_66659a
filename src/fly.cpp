@@ -10,7 +10,7 @@ int maxRPM = 3000;
 
 pros::Mutex rpmMutex;
 double target_rpm = 0;
-double threshold = 25;
+double threshold = 20;
 
 void setFlywheelRPM(double targetRPM) {
     rpmMutex.take();
@@ -31,7 +31,8 @@ double getFlywheelRPM() {
 bool flyLast = false;
 
 void flySpeed() {
-	// int kP = 15;
+	float flyPower = 0;
+	int kP = 200;
 	Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 
 	while(true) {
@@ -52,34 +53,34 @@ void flySpeed() {
 		currentSpeed = SMA_Filter(6 * Fly.get_actual_velocity());
 
 		//Get error
-		// float flyError = target_speed - currentSpeed; 
+		float flyError = target_speed - currentSpeed; 
 
 		if(target_speed == 0) {
-			Fly.move_voltage(0);
+			flyPower = 0;
+
 			readyShoot = false;
 		}
-		else if(fabs(currentSpeed - target_speed) < threshold) {
-			Fly.move_voltage(holdPower + 250);
-			readyShoot = true;
-		}
 		else {
-			if(currentSpeed < target_speed) {
-				Fly.move_voltage(12000);
-				readyShoot = false;
+			if(fabs(flyError) < 50) {
+				flyPower = 2*holdPower;
+
+				readyShoot = true;
 			}
-			else{
-				Fly.move_voltage(0);
+			else {
+				flyPower = kP * flyError;
+
 				readyShoot = false;
 			}
 		}
 		
-		// if(shootingFunc) {
-		// std::cout << currentSpeed << "," << target_speed << "\n";
-		// }
-		// pros::lcd::print(6, "error: %f\n", flyError);
-		        pros::lcd::print(5, "Fly: %f\n", currentSpeed);
+		Fly.move_voltage(flyPower);
 
-		pros::delay(20);
+		printf("%.2f\n", currentSpeed);
+
+		pros::lcd::print(5, "Fly: %f\n", currentSpeed);
+		pros::lcd::print(6, "power: %f\n", flyPower);
+
+		pros::delay(10);
 	}
 }
 
@@ -115,9 +116,12 @@ double SMA_Filter(double rawData) {
 // #include <queue>
 // #include "fly.h"
 
+// int maxVolt = 12000;
+// int maxRPM = 3000;
+
 // pros::Mutex rpmMutex;
 // double target_rpm = 0;
-// double threshold = 150;
+// double threshold = 25;
 
 // void setFlywheelRPM(double targetRPM) {
 //     rpmMutex.take();
@@ -134,20 +138,18 @@ double SMA_Filter(double rawData) {
 // }
 
 // //--------------------------// FlyWheel //--------------------------//	
-
-// bool flyLast = false;
-// bool inTarget = false;
-
 // void flySpeed() {
-// 	double currentSpeed = 0;
-// 	double error = 0;
-// 	double flyPower = 0;
-// 	float kP = 0.4;
-// 	float kV = 0.04;
+// 	bool flyLast = false;
+// 	double gainVal = 0.07;
+
+// 	float tbh = 0;
+// 	float flyPower = 0;
+// 	float prevFlyError = 0;
 
 // 	Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 
 // 	while(true) {
+// 		//Toggle Logic
 // 		if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2)) && !flyLast) {
 // 			flyState = !flyState;
 // 			flyLast = true;
@@ -156,60 +158,35 @@ double SMA_Filter(double rawData) {
 // 			flyLast = false;
 // 		}
 
+// 		//Get flywheel target speed
 // 		float target_speed = getFlywheelRPM();
-// 		float goalRPM = target_speed/600 * 3000;
-// 		float holdPower = goalRPM * 12000/3000;
-// 		// float holdPower = target_speed * 4;
+// 		//Get current speed
+// 		currentSpeed = 6 * Fly.get_actual_velocity();
+// 		//Get error
+// 		float flyError = target_speed - currentSpeed;
+	
+// 		//Implement TBH Control
+// 		flyPower += (gainVal * flyError);
 
-
-// 		// if(inTarget) {
-// 		currentSpeed = SMA_Filter(6 * Fly.get_actual_velocity());
-// 		// }
-// 		// else {
-// 		// 	currentSpeed = 6 * Fly.get_actual_velocity();
-// 		// }
-
-// 		if(target_speed == 0) {
-// 			Fly.move_voltage(0);
-// 			inTarget = false;
+// 		if(std::signbit(flyError) != std::signbit(prevFlyError)) {
+// 			flyPower = 0.5 * (flyPower + tbh);
+// 			tbh = flyPower;
+// 			prevFlyError = flyError;
 // 		}
-// 		else if(fabs(currentSpeed - target_speed) < threshold) {
-// 			inTarget = true;
 
-// 			error = holdPower - currentSpeed;
-// 			flyPower = error * kP + holdPower * kV;
+// 		Fly.move_voltage(flyPower);
 
-// 			Fly.move_voltage(flyPower);
-// 			controller.rumble(".");
+// 		if(fabs(flyError) < threshold) {
+// 			readyShoot = true;
 // 		}
 // 		else {
-// 			if(currentSpeed < target_speed) {
-// 				Fly.move_voltage(12000);
-// 				inTarget = false;
-// 			}
-// 			else{
-// 				Fly.move_voltage(0);
-// 				inTarget = false;
-// 			}
+// 			readyShoot = false;
 // 		}
 		
-// 		pros::delay(20);
+// 		pros::lcd::print(5, "Fly: %f\n", currentSpeed);
+// 		pros::lcd::print(6, "Flypower: %f\n", flyPower);
 
-
-// 		if(flyState == true) {
-// 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)){ 
-// 				setFlywheelRPM(1600);
-// 			}
-// 			else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
-// 				setFlywheelRPM(2600);
-// 			}
-// 			else {
-// 				setFlywheelRPM(2000);
-// 			}
-// 		}
-// 		else {
-// 			setFlywheelRPM(0);
-// 		}
+// 		pros::delay(10);
 // 	}
 // }
 

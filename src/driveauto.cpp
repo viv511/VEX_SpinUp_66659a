@@ -12,13 +12,13 @@
 
 const double inertialDrift = 1.00446429;
 
-void shoot(int num_disks, int rpmSpeed, int timeout) {
+void shoot(int num_disks, int rpmSpeed, int timeout, bool isChain) {
     shootingFunc = true;
     flyState = true;
     setFlywheelRPM(rpmSpeed);
 
     for(int i=0; i<num_disks; i++) {
-        pros::delay(300);
+        pros::delay(5);
         int timeSet = 0;
 
         while(readyShoot == false) {
@@ -36,16 +36,22 @@ void shoot(int num_disks, int rpmSpeed, int timeout) {
     }
 
     shootingFunc = false;
+
+    if(!isChain) {
+        flyState = false;
+        setFlywheelRPM(0);
+    }
+    
 }
 
 void index(int disk) {
-    IIR.move_voltage(-11000);
+    IIR.move_voltage(-12000);
 	
     if(disk == 2) {
-        pros::delay(200);
+        pros::delay(150);
     }
     else if(disk == 1) {
-        pros::delay(120);
+        pros::delay(125);
     }
     else {
         pros::delay(100);
@@ -128,12 +134,12 @@ void driveOdomAngPD(int inches, double limit, double f_kP, double f_kD, double f
             }
         }
 
-        if(fabs(latError) < 5) {
-            angPower = 0;
-        }
+        // if(fabs(latError) < 5) {
+        //     angPower = 0;
+        // }
 
 
-        if(fabs(latError) < 3) {
+        if(fabs(latError) < 2) {
             timeAtError+=10;
         }
         
@@ -141,7 +147,7 @@ void driveOdomAngPD(int inches, double limit, double f_kP, double f_kD, double f
         if(totalTime > 4000) {
             break;
         }
-        if(timeAtError > 1000) {
+        if(timeAtError > 750) {
             break;
         }
 
@@ -152,7 +158,7 @@ void driveOdomAngPD(int inches, double limit, double f_kP, double f_kD, double f
 
 
         pros::delay(10);
-    }while(fabs(goal - curInches) > 1);
+    }while(fabs(goal - curInches) > 0.5);
 
     LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
     RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);

@@ -95,8 +95,6 @@ void autonomous() {
  * operator control task will be stopped. Re-enabling the robot will restart the
  * task, not resume it from where it left off.
  */
-float tankL = 0;
-float tankR = 0;
 
 void opcontrol() {
 	flyState = false;
@@ -104,14 +102,24 @@ void opcontrol() {
 	LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
 	RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
 
-	while(true) {
-		//TESTING
-		// controller.rumble(".");
+	float leftPower = 0;
+	float rightPower = 0;
 
-		tankL = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-		tankR = 0.7 * controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
-		LeftDT.move_velocity((tankL+tankR) * 4.72);
-		RightDT.move_velocity((tankL-tankR) * 4.72);
+	while(true) {
+		//Bind longitude and latitude from -1 to 1 from the controller
+		float lon = (controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y)) / 127.0;
+		float lat = (controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X)) / 127.0;
+
+		//Find scaled bounded maximum for drivetrain %'s
+		float mag = fmax(1.0, fmax(fabs(lon + lat), fabs(lon - lat)));
+
+		//-1.0 <--  0.0 --> 1.0 scale to voltage (-12000 <-- 0 --> 12000 mV)
+		leftPower = ((lon + lat) / mag) * 12000;
+		rightPower = ((lon - lat) / mag) * 12000;
+
+		//Assign power
+		LeftDT.move_voltage(leftPower);
+		RightDT.move_voltage(rightPower);
 
 		if(readyShoot) {
 			controller.rumble(".");
@@ -128,7 +136,7 @@ void opcontrol() {
 		//Intake
 		//Roller
 		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
-			IIR.move_voltage(-8000);
+			IIR.move_voltage(-10000);
 		}
 		else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
 			IIR.move_voltage(12000);
@@ -140,12 +148,12 @@ void opcontrol() {
 			IIR.move_voltage(0);
 		}
 
-		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)){
-		// 	// nonRoller();
-		// 	// shoot(3, 2450, 5000);
-		// 	// flyState = false;
-   		// 	// setFlywheelRPM(0);
-		// }
+		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)){
+			for(int i=0; i<4; i++) {
+				driveOdomAngPD(36, 1, 480, 600, 20);
+				turn(90, 105, 210);
+			}
+		}
 
 		pros::delay(20);
 		pros::lcd::print(2, "inertial: %f\n", inertial.get_rotation());
@@ -159,7 +167,7 @@ void opcontrol() {
 				setFlywheelRPM(2800);
 			}
 			else {
-				setFlywheelRPM(1975);//2000
+				setFlywheelRPM(2000);//2000
 			}
 		}
 		else {
@@ -194,7 +202,7 @@ void nonRoller() {
 	IIR.move_voltage(0);
 
 
-	shoot(3, 2400, 5000);
+	// shoot(3, 2400, 5000);
 	
 	driveOdomAngPD(7, 0.9, 400, 100, 50);
 
@@ -229,7 +237,7 @@ void ray() {
 
 	driveOdomAngPD(-34, 0.8, 400, 300, 50);
 	negative(-45, 100, 200);
-	shoot(2, 2400, 4000);
+	// shoot(2, 2400, 4000);
 
 	flyState = false;
     setFlywheelRPM(0);
