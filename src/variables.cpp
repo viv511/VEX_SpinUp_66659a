@@ -10,8 +10,6 @@ int goalX = 0;
 int goalY = 0;
 
 bool flyState = false;
-bool readyShoot = false;
-bool shootingFunc = false;
 
 float absoluteRight = 0;
 

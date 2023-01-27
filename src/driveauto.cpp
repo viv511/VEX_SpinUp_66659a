@@ -12,18 +12,17 @@
 
 const double inertialDrift = 1.00446429;
 
-void shoot(int num_disks, int rpmSpeed, int timeout, bool isChain) {
-    shootingFunc = true;
+void shoot(int num_disks, int rpmSpeed, int timeout, bool isChain, int threshold) {
     flyState = true;
     setFlywheelRPM(rpmSpeed);
+    int timeSet = 0;
+
 
     for(int i=0; i<num_disks; i++) {
-        pros::delay(5);
-        int timeSet = 0;
-
-        while(readyShoot == false) {
-            pros::delay(10);
-            timeSet+=10;
+        timeSet = 0;
+        while(fabs(rpmSpeed - currentSpeed) > threshold) {
+            pros::delay(20);
+            timeSet+=20;
 
             if(timeSet > timeout) {
                 controller.rumble("-");
@@ -31,33 +30,25 @@ void shoot(int num_disks, int rpmSpeed, int timeout, bool isChain) {
             }
         }
 
-        // controller.rumble("-");
         index(i);
     }
-
-    shootingFunc = false;
-
-    if(!isChain) {
-        flyState = false;
-        setFlywheelRPM(0);
-    }
-    
 }
 
 void index(int disk) {
     IIR.move_voltage(-12000);
 	
     if(disk == 2) {
-        pros::delay(150);
+        pros::delay(200);
     }
     else if(disk == 1) {
-        pros::delay(125);
+        pros::delay(100);
     }
     else {
-        pros::delay(100);
+        pros::delay(50);
     }
 
 	IIR.move_voltage(0);
+    // pros::delay(5);
 }
 
 void driveOdomAngPD(int inches, double limit, double f_kP, double f_kD, double f_kP_Theta) {

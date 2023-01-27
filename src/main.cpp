@@ -105,10 +105,16 @@ void opcontrol() {
 	float leftPower = 0;
 	float rightPower = 0;
 
+	float turnSense = 0.67;
+
+	long long controllerTime = 0;
+
 	while(true) {
+		// *---*---*---*---*---*---*--CONTROLLER AND DRIVE--*---*---*---*---*---*---*---*---*
+
 		//Bind longitude and latitude from -1 to 1 from the controller
 		float lon = (controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y)) / 127.0;
-		float lat = (controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X)) / 127.0;
+		float lat = ((controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X)) / 127.0) * turnSense;
 
 		//Find scaled bounded maximum for drivetrain %'s
 		float mag = fmax(1.0, fmax(fabs(lon + lat), fabs(lon - lat)));
@@ -121,11 +127,8 @@ void opcontrol() {
 		LeftDT.move_voltage(leftPower);
 		RightDT.move_voltage(rightPower);
 
-		if(readyShoot) {
-			controller.rumble(".");
-		}
 
-
+		// *---*---*---*---*---*---*---*--ENDGAME--*---*---*---*---*---*---*---*---*---*
 		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
 				controller.rumble(".");
@@ -133,46 +136,56 @@ void opcontrol() {
 			}
 		}
 
-		//Intake
-		//Roller
+		// *---*---*---*---*---*--INTAKE, INDEXER, AND ROLLER--*---*---*---*---*---*---*---*
 		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
-			IIR.move_voltage(-10000);
+			IIR.move_voltage(-12000);
 		}
 		else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
-			IIR.move_voltage(12000);
+			IIR.move_voltage(9000);
 		}
 		else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
-			IIR.move_voltage(-12000);
+			IIR.move_voltage(-9000);
 		}
 		else{
 			IIR.move_voltage(0);
 		}
 
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)){
-			for(int i=0; i<4; i++) {
-				driveOdomAngPD(36, 1, 480, 600, 20);
-				turn(90, 105, 210);
-			}
-		}
-
-		pros::delay(20);
-		pros::lcd::print(2, "inertial: %f\n", inertial.get_rotation());
-
-
+		// *---*---*---*---*---*--FLYWHEEL CONTROLLER--*---*---*---*---*---*---*---*
 		if(flyState == true) {
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)){ 
-				setFlywheelRPM(1800);//1800
+				setFlywheelRPM(2200);
 			}
 			else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
-				setFlywheelRPM(2800);
+				setFlywheelRPM(3200);
 			}
 			else {
-				setFlywheelRPM(2000);//2000
+				setFlywheelRPM(1800);
+			}
+
+			if(fabs(getFlywheelRPM() - currentSpeed) < 30) {
+				controller.rumble(".");
 			}
 		}
 		else {
 			setFlywheelRPM(0);
 		}
+
+		// *---*---*---*---*---*--DEBUGGING UTILS--*---*---*---*---*---*---*---*
+		if(!(controllerTime % 5)) {
+			// controller.print(0, 0, "Counter: %d", 2+(controllerTime/100));
+			controller.print(0, 0, "RPM: %.1f", currentSpeed);
+		}
+
+		pros::lcd::print(2, "inertial: %f\n", inertial.get_rotation());
+
+		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
+			shoot(3, 2000, 5000, false, 50);
+			flyState = false;
+			setFlywheelRPM(0);
+		}
+
+		pros::delay(10);
+		controllerTime++;
 	}
 }
 
