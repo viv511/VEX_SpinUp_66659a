@@ -11,6 +11,7 @@
 #include <fstream>
 #include <filesystem>
 #include <cmath>
+#include <string>
 
 pros::Motor_Group LeftDT ({FL, ML, BL});
 pros::Motor_Group RightDT ({FR, MR, BR});
@@ -35,9 +36,14 @@ void initialize() {
 	endgame1.set_value(false);
 	pros::lcd::initialize();
 
-	inertial.reset(true);
-	inertial.set_rotation(0);
+	// inertial.reset(true);
+	inertial.reset();
+	while(inertial.is_calibrating()) {
+		pros::delay(5);
+	}
+	inertial.set_rotation(0.00);
 
+	setPIDvalues();
 	pros::Task odomStuff (odometry);
 	pros::Task flywheelStuff (flySpeed);
 }
@@ -76,8 +82,8 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-	// RollerSide();
-	nonRoller();
+	RollerSide();
+	// nonRoller();
 	// ray();
 	// progSkills();
 }
@@ -105,27 +111,50 @@ void opcontrol() {
 	float leftPower = 0;
 	float rightPower = 0;
 
-	float turnSense = 0.67;
+	float driveSense, turnSense;
 
 	long long controllerTime = 0;
 
+	bool defenseLast = false;
+	bool defenseState = false;
+
+	std::string driveState = "";
+
 	while(true) {
 		// *---*---*---*---*---*---*--CONTROLLER AND DRIVE--*---*---*---*---*---*---*---*---*
+		if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) && !defenseLast) {
+			defenseState = !defenseState;
+			defenseLast = true;
+		}
+		else if(!((controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)))) {
+			defenseLast = false;
+		}
+		
+		if(defenseState) {
+			driveSense = 1;
+			turnSense = 1;
+			driveState = "On :D  ";
+		}
+		else {
+			driveSense = 0.7;
+			turnSense = 0.52;
+			driveState = "Off :C  ";
+		}
 
 		//Bind longitude and latitude from -1 to 1 from the controller
-		float lon = (controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y)) / 127.0;
+		float lon = ((controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y)) / 127.0) * driveSense;
 		float lat = ((controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X)) / 127.0) * turnSense;
 
 		//Find scaled bounded maximum for drivetrain %'s
 		float mag = fmax(1.0, fmax(fabs(lon + lat), fabs(lon - lat)));
 
 		//-1.0 <--  0.0 --> 1.0 scale to voltage (-12000 <-- 0 --> 12000 mV)
-		leftPower = ((lon + lat) / mag) * 12000;
-		rightPower = ((lon - lat) / mag) * 12000;
+		leftPower = ((lon + lat) / mag) * 600;
+		rightPower = ((lon - lat) / mag) * 600;
 
 		//Assign power
-		LeftDT.move_voltage(leftPower);
-		RightDT.move_voltage(rightPower);
+		LeftDT.move_velocity(leftPower);
+		RightDT.move_velocity(rightPower);
 
 
 		// *---*---*---*---*---*---*---*--ENDGAME--*---*---*---*---*---*---*---*---*---*
@@ -141,10 +170,10 @@ void opcontrol() {
 			IIR.move_voltage(-12000);
 		}
 		else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
-			IIR.move_voltage(9000);
+			IIR.move_voltage(8000);
 		}
 		else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
-			IIR.move_voltage(-9000);
+			IIR.move_voltage(12000);
 		}
 		else{
 			IIR.move_voltage(0);
@@ -152,18 +181,18 @@ void opcontrol() {
 
 		// *---*---*---*---*---*--FLYWHEEL CONTROLLER--*---*---*---*---*---*---*---*
 		if(flyState == true) {
-			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)){ 
-				setFlywheelRPM(2200);
-			}
-			else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
-				setFlywheelRPM(3200);
-			}
-			else {
-				setFlywheelRPM(1800);
-			}
+			// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)){ 
+				// setFlywheelRPM(2200);
+			// }
+			// else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
+				// setFlywheelRPM(2500);
+			// }
+			// else {
+				setFlywheelRPM(1900);
+			// }
 
 			if(fabs(getFlywheelRPM() - currentSpeed) < 30) {
-				controller.rumble(".");
+				controller.rumble("-");
 			}
 		}
 		else {
@@ -172,83 +201,154 @@ void opcontrol() {
 
 		// *---*---*---*---*---*--DEBUGGING UTILS--*---*---*---*---*---*---*---*
 		if(!(controllerTime % 5)) {
-			// controller.print(0, 0, "Counter: %d", 2+(controllerTime/100));
-			controller.print(0, 0, "RPM: %.1f", currentSpeed);
+			controller.print(0, 0, "Full power: %s", driveState);
+			// controller.print(0, 0, "RPM: %.1f", currentSpeed);
 		}
 
 		pros::lcd::print(2, "inertial: %f\n", inertial.get_rotation());
 
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
-			shoot(3, 2000, 5000, false, 50);
-			flyState = false;
-			setFlywheelRPM(0);
+		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
+		// 	shoot(3, 1900, 3000, 50);
+		// 	flyState = false;
+		// 	setFlywheelRPM(0);
+		// }
+		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
+			// progSkills();
+			// turn(-90);
+			// forwardPD(40, 1, 510, 300, 50);
+			// shoot(3, 2300, 6000, 5, 20);
+			// pros::delay(2000);
+			// flyState = false;
+			// setFlywheelRPM(0);
 		}
+		
 
 		pros::delay(10);
 		controllerTime++;
 	}
 }
 
+void progSkills() {
+	// roller
+	IIR.move_voltage(12000);
+
+	LeftDT.move_voltage(4000);
+	RightDT.move_voltage(4000);
+	pros::delay(400);
+	LeftDT.move_voltage(0);
+	RightDT.move_voltage(0);
+
+	
+	pros::delay(300);
+	IIR.move_voltage(0);
+
+	// forward turn -45 and drive forward more 
+	forwardPD(-6, 1, 1000, 400, 50);
+	turn(110);
+	IIR.move_voltage(12000);
+
+	// intake 3rd disk and get second roller
+	forwardPD(25, 0.6, 700, 400, 50);
+	turn(-20);
+	IIR.move_voltage(0);
+
+	forwardPD(7, 1, 1000, 400, 50);
+	IIR.move_voltage(12000);
+	LeftDT.move_voltage(3000);
+	RightDT.move_voltage(3000);
+	pros::delay(400);
+	LeftDT.move_voltage(0);
+	RightDT.move_voltage(0);
+
+	pros::delay(100);
+	IIR.move_voltage(0);
+	// turn to goal and drive straight 
+	forwardPD(-8, 1, 800, 400, 50);
+	turn(-85);
+	flyState = true;
+	setFlywheelRPM(1500);
+	forwardPD(-50, 0.7, 1100, 400, 50);
+
+	// shoot 3 disks 
+	shoot(3, 2000, 6000, 100, 20);
+
+	flyState = false;
+	setFlywheelRPM(0);
+	// back up to original spot 
+	// turn 45 degrees
+	// intake 3 disks
+	// turn and shoot 3 disks
+	// go back to center
+	// turn on disk line and pick up 2
+	// go between stacks to get to roller watch movement on4082b
+	// get 4th roller like the beginning with disk = 3
+	// drive and shoot 3
+}
+
 void RollerSide() {
+	flyState = true;
+	setFlywheelRPM(2600);
+	pros::delay(50);
+	shoot(3, 2700, 10000, 3, 400);
+
+	pros::delay(1000);
+
 	LeftDT.move_voltage(6000);
 	RightDT.move_voltage(6000);
-	pros::delay(300);
+	pros::delay(500);
 	LeftDT.move_voltage(0);
 	RightDT.move_voltage(0);
 
 	IIR.move_voltage(-12000);
-	pros::delay(110);
+	pros::delay(140);
 	IIR.move_voltage(0);
 }
 
 void nonRoller() {
 	IIR.move_voltage(12000);
-	
-	driveOdomAngPD(20, 0.7, 430, 300, 50);
-
 	flyState = true;
-	setFlywheelRPM(2300);
+	setFlywheelRPM(2400);
 
-	negative(-143, 110, 300);
+	forwardPD(26, 0.7, 1000, 600, 0);
 
-	driveOdomAngPD(-10, 0.9, 400, 100, 50);
+
+	turn(-146);
+
 	IIR.move_voltage(0);
 
+	shoot(3, 2370, 6000, 4, 300);
+	pros::delay(50);
 
-	// shoot(3, 2400, 5000);
+	turn(-77);
+
+	forwardPD(35, 1, 1100, 300, 0);
+	// flyState = false;
+    // setFlywheelRPM(0);
 	
-	driveOdomAngPD(7, 0.9, 400, 100, 50);
+	// turn(45);
 
-	negative(-77, 120, 200);
-
-	driveOdomAngPD(36, 0.6, 430, 300, 0);
-	flyState = false;
-    setFlywheelRPM(0);
-	
-	turn(45, 138, 210);
-
-	LeftDT.move_voltage(4000);
-	RightDT.move_voltage(4000);
-	pros::delay(700);
+	LeftDT.move_voltage(6000);
+	RightDT.move_voltage(6000);
+	pros::delay(400);
 	LeftDT.move_voltage(0);
 	RightDT.move_voltage(0);
 
 	IIR.move_voltage(-12000);
-	pros::delay(105);
+	pros::delay(200);
 	IIR.move_voltage(0);
 }
 
 void ray() {
 	RollerSide();
-	driveOdomAngPD(-5, 0.5, 400, 200, 50);
+	// driveOdomAngPD(-5, 0.5, 400, 200, 50);
 	negative(-90, 110, 200);
-	driveOdomAngPD(40, 0.8, 400, 300, 50);
-	turn(90, 142, 210);
+	// driveOdomAngPD(40, 0.8, 400, 300, 50);
+	// turn(90, 142, 210);
 
 	flyState = true;
 	setFlywheelRPM(2300);
 
-	driveOdomAngPD(-34, 0.8, 400, 300, 50);
+	// driveOdomAngPD(-34, 0.8, 400, 300, 50);
 	negative(-45, 100, 200);
 	// shoot(2, 2400, 4000);
 
@@ -315,24 +415,6 @@ double average_vel() {
 	return (fabs(MR.get_actual_velocity())+fabs(ML.get_actual_velocity())+fabs(FR.get_actual_velocity())+fabs(FL.get_actual_velocity())+fabs(BL.get_actual_velocity()) + fabs(BR.get_actual_velocity()))/6;
 }
 
-
-void progSkills() {
-	int variable = 1;
-	// roller
-	// forward turn -45 and drive forward more 
-	// intake 3rd disk and get second roller
-	// turn to goal and drive straight 
-	// shoot 3 disks 
-	// back up to original spot 
-	// turn 45 degrees
-	// intake 3 disks
-	// turn and shoot 3 disks
-	// go back to center
-	// turn on disk line and pick up 2
-	// go between stacks to get to roller watch movement on4082b
-	// get 4th roller like the beginning with disk = 3
-	// drive and shoot 3
-}
 
 // void move_encoder(double ticks, double speed) {
 // 	reset_encoder();

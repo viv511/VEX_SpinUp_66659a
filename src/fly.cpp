@@ -31,8 +31,9 @@ double getFlywheelRPM() {
 bool flyLast = false;
 
 void flySpeed() {
-	float kV = 3.81;
-	float kP = 35;
+	float kV = 3.6;
+	float kS = 1200;
+	float kP = 0;
 	float kI = 0;
 
 	float flyPower = 0;
@@ -66,11 +67,9 @@ void flySpeed() {
 		else {
 			if(flyError > rpmThreshold){
 				flyPower = 12000;
-				// flyIntegral = 0;
 			}
 			else if(flyError < -rpmThreshold) {
 				flyPower = 0;
-				// flyIntegral = 0;
 			}
 			else {	
 				// flyIntegral += flyError;
@@ -84,7 +83,7 @@ void flySpeed() {
 				// }
 				
 				// flyPower = (kV * targetSpeed) + (flyError * kP) + (flyIntegral * kI);
-				flyPower = (kV * targetSpeed) + (flyError * kP);
+				flyPower = (kV * targetSpeed) + kS + (flyError * kP);
 			}
 		}
 		
@@ -206,7 +205,7 @@ void flySpeed() {
 std::queue<double> smaData;
 
 //Number of elements to average and the running sum
-int window = 10;
+int window = 3;
 double windowTotal = 0;
 
 double SMA_Filter(double rawData) {

@@ -12,17 +12,42 @@
 
 const double inertialDrift = 1.00446429;
 
-void shoot(int num_disks, int rpmSpeed, int timeout, bool isChain, int threshold) {
+double pdVals[4][3];
+
+void setPIDvalues() {
+    //45 Degrees
+    pdVals[0][0] = 201.5;
+    pdVals[0][1] = 0;
+    pdVals[0][2] = 45;
+
+    //90 Degrees
+    pdVals[1][0] = 201;
+    pdVals[1][1] = 10500;
+    pdVals[1][2] = 90;
+
+    //135 Degrees
+    pdVals[2][0] = 146;
+    pdVals[2][1] = 210;
+    pdVals[2][2] = 135;
+
+    //180
+    pdVals[3][0] = 140;
+    pdVals[3][1] = 220;
+    pdVals[3][2] = 180;
+}
+
+
+void shoot(int num_disks, int rpmSpeed, int timeout, int threshold, int waitMsec) {
     flyState = true;
     setFlywheelRPM(rpmSpeed);
-    int timeSet = 0;
+    int timeSet;
 
-
-    for(int i=0; i<num_disks; i++) {
+    for(int i=1; i<num_disks+1; i++) {
+        pros::delay(waitMsec);
         timeSet = 0;
         while(fabs(rpmSpeed - currentSpeed) > threshold) {
-            pros::delay(20);
-            timeSet+=20;
+            pros::delay(10);
+            timeSet+=10;
 
             if(timeSet > timeout) {
                 controller.rumble("-");
@@ -30,28 +55,62 @@ void shoot(int num_disks, int rpmSpeed, int timeout, bool isChain, int threshold
             }
         }
 
+        pros::delay(10);
         index(i);
     }
 }
 
 void index(int disk) {
     IIR.move_voltage(-12000);
-	
-    if(disk == 2) {
-        pros::delay(200);
+	controller.rumble(".");
+    if((disk == 2) || (disk == 3)) {
+        pros::delay(600);
     }
     else if(disk == 1) {
-        pros::delay(100);
+        pros::delay(250);
     }
     else {
-        pros::delay(50);
+        pros::delay(100);
     }
 
 	IIR.move_voltage(0);
     // pros::delay(5);
 }
 
-void driveOdomAngPD(int inches, double limit, double f_kP, double f_kD, double f_kP_Theta) {
+void pivot(double angle) {
+	//theta = total turn
+	//angle = target angle (0 to 360 degrees)
+	//startAngle = current angle of robot -inf < degrees < inf
+	double theta = 0;
+	int startAngle = inertial.get_rotation();
+	//get relative to (0 to 360 degrees)
+	startAngle = startAngle % 360;
+
+	//two cases
+	if(startAngle > 180) {
+		theta = 360 - startAngle;
+		theta += angle;
+		if(theta >= 180) {
+			//if the turn is bigger than 180, impractical - turn the other way
+			theta = 360 - theta;
+			theta*=-1;
+		}
+	}
+	else if(startAngle <= 180) {
+		theta = (theta + startAngle) * -1;
+		theta+=angle;
+		if(theta >= 180) {
+			//if the turn is bigger than 180, impractical - turn the other way
+			theta = 360 - theta;
+			theta*=-1;
+		}
+	}
+
+	//theta is final how much to turn
+	turn(theta);
+}
+
+void forwardPD(int inches, double limit, double f_kP, double f_kD, double f_kP_Theta) {
     inertial.tare_rotation();
     absoluteRight = 0;
     float curInches = absoluteRight;
@@ -210,7 +269,7 @@ void oldDriveArcPD(int leftTicks, int rightTicks, double limit, int dir) {
 }
 
 
-void turn(double angle, float p, float d) {
+void turn(double angle) {
     int timeAtError = 0;
     int totalTime = 0;
 
@@ -218,17 +277,44 @@ void turn(double angle, float p, float d) {
 	double prevError = 0;
 	double derivative = 0;
 	double power = 0;
-	double kP = p;
-	double kI = 4.5;
-    double kD = d;
+	double kP, kD;
+	double kI = 0;
+    //3.5
     double integral = 0;
-    //100, 7, 220
+    
+    int knownPos = -1;
+    for(int i=0; i<4; i++) {
+        if(angle == pdVals[i][2]) {
+            knownPos = i;
+        }
+    }
+
+    if(knownPos != -1) {
+        kP = pdVals[knownPos][0];
+        kD = pdVals[knownPos][1];
+    }
+    else {
+        //extrapolate data to linear regression i think???
+        if(fabs(angle) >= 60) {
+            kP = pdVals[1][0];
+            kD = pdVals[1][1];
+        }
+        else {
+            kP = pdVals[0][0];
+            kD = pdVals[0][1];
+        }
+    }
+
+    if(angle == -20) {
+        kP = pdVals[0][0] + 40;
+        kD = pdVals[0][1];
+    }
 
 	double target = angle + inertial.get_rotation();
 	
 	do {
 		error = target - inertial.get_rotation();
-		derivative = error - prevError;
+		derivative = (error - prevError)/10;
         integral+=error;
 		prevError = error;
 
@@ -241,32 +327,35 @@ void turn(double angle, float p, float d) {
 
 		power = (error * kP) + (derivative*kD) + (integral * kI);
 
+        if(power > 12000) {
+            power = 12000;
+        }
+
 		RightDT.move_voltage(-power);
 		LeftDT.move_voltage(power);
 
-        pros::lcd::print(3, "theta: %f\n", inertial.get_rotation());
+        // pros::lcd::print(3, "theta: %f\n", inertial.get_rotation());
         pros::lcd::print(4, "power: %f\n", power);
 
-        if(fabs(target - inertial.get_rotation()) < 3) {
+        if(fabs(target - inertial.get_rotation()) < 0.3) {
             timeAtError+=10;
         }
         
         totalTime+=10;
 
-        // if(timeAtError > 3000) {
-        //     controller.rumble("-");
-        //     break;
-        // }
-
-        if(totalTime > 3000) {
+        if(timeAtError > 500) {
+            controller.rumble(".");
+            break;
+        }
+        if(totalTime > 1300) {
             controller.rumble("-");
             break;
         }
 
         pros::delay(10);
-        std::cout << totalTime << "," << power << "," << error << "\n";
+        // std::cout << totalTime << "," << power << "," << error << "\n";
 
-	}while(fabs(target - inertial.get_rotation()) > 1);
+	}while(true);
 
     // pros::lcd::print(5, "error: %f\n", target - inertial.get_rotation());
 

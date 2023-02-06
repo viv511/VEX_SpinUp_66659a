@@ -9,12 +9,17 @@
 
 using namespace pros;
 
-void shoot(int num_disks, int rpmSpeed, int timeout, bool isChain, int threshold);
+void shoot(int num_disks, int rpmSpeed, int timeout, int threshold, int waitMsec);
 void index(int disk);
 
-void driveOdomAngPD(int inches, double limit, double f_kP, double f_kD, double f_kP_Theta);
+void pivot(double angle);
+void turn(double angle);
+void setPIDvalues();
+
+void forwardPD(int inches, double limit, double f_kP, double f_kD, double f_kP_Theta);
+
 void oldDriveArcPD(int leftTicks, int rightTicks, double limit, int dir);
-void turn(double angle, float p, float d);
+
 void negative(double angle, float p, float d);
 void rotate(double angle);
 #endif

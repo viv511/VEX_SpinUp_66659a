@@ -71,13 +71,13 @@ void disabled(void);
 void competition_initialize(void);
 void opcontrol(void);
 
-void pivot(double angle);
+// void pivot(double angle);
 
-void drive(int ticks);
+// void drive(int ticks);
 void DrivePD(double ticks, double limit);
-void SpecialPD(int leftTicks, int rightTicks, double limit);
+// void SpecialPD(int leftTicks, int rightTicks, double limit);
 
-void move_encoder(double ticks, double speed);
+// void move_encoder(double ticks, double speed);
 void reset_encoder(void);
 double average_encoders();
 double average_vel();
