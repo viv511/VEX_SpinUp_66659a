@@ -15,8 +15,8 @@ extern int goalY;
 
 extern bool flyState;
 
-extern double currentSpeed;
+extern float flyError;
 
-extern float absoluteRight;
+extern float absoluteBack;
 
 #endif

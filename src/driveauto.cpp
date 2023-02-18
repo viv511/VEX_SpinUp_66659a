@@ -42,10 +42,10 @@ void shoot(int num_disks, int rpmSpeed, int timeout, int threshold, int waitMsec
     setFlywheelRPM(rpmSpeed);
     int timeSet;
 
-    for(int i=1; i<num_disks+1; i++) {
+    for(int i=0; i<num_disks; i++) {
         pros::delay(waitMsec);
         timeSet = 0;
-        while(fabs(rpmSpeed - currentSpeed) > threshold) {
+        while(flyError > threshold) {
             pros::delay(10);
             timeSet+=10;
 
@@ -55,8 +55,21 @@ void shoot(int num_disks, int rpmSpeed, int timeout, int threshold, int waitMsec
             }
         }
 
-        pros::delay(10);
         index(i);
+        // pros::delay(10);
+        // timeSet = 0;
+        // while(flyError < 200) {
+        //     timeSet+=10;
+        //     pros::delay(10);
+
+        //     IIR.move_voltage(-12000);
+
+        //     if(timeSet > timeout) {
+        //         controller.rumble("-");
+        //         break;
+        //     }
+        // }
+        // IIR.move_voltage(0);
     }
 }
 
@@ -110,14 +123,18 @@ void pivot(double angle) {
 	turn(theta);
 }
 
-void forwardPD(int inches, double limit, double f_kP, double f_kD, double f_kP_Theta) {
+void forwardPD(int inches, double limit, double f_kP_Theta) {
+    LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
+    RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
     inertial.tare_rotation();
-    absoluteRight = 0;
-    float curInches = absoluteRight;
+
+    absoluteBack = 0;
+    float curInches = absoluteBack;
     float goal = curInches + inches;
 
     //1 or -1, forward or backward
-    int dir = abs(inches)/inches;
+    float latError;
+    // int dir = abs(inches)/inches;
 
     //save initial heading for angle correction
     float initHeading = inertial.get_rotation();
@@ -133,20 +150,20 @@ void forwardPD(int inches, double limit, double f_kP, double f_kD, double f_kP_T
     int totalTime = 0;
 
     //Constants
-    float kP = f_kP;
-    float kD = f_kD;
+    float kP = 600;
+    float kD = inches * 1000;
     float kP_Theta = f_kP_Theta;
 
     do {
         totalTime+=10;
-        curInches = absoluteRight;
+        curInches = absoluteBack;
 
         //Calculate error from desired
-        float latError = fabs(inches - curInches);
+        latError = inches - curInches;
         float angError = initHeading - inertial.get_rotation();
 
         //Derivative term on lateral
-        derivative = latError - prevLatError;
+        derivative = (latError - prevLatError)/10;
         prevLatError = latError;
         
         //Check which direction to turn
@@ -161,11 +178,11 @@ void forwardPD(int inches, double limit, double f_kP, double f_kD, double f_kP_T
         latPower = (kP * latError) + (kD * derivative);
 
         //Use limit to cap the motor's max output voltage (lateral)
-        if(latPower >= (12000 * limit)) {
-			latPower = 12000 * limit;
+        if(latPower >= (11000 * limit)) {
+			latPower = 11000 * limit;
 		}
 
-        if(fabs(angError) < 1) {
+        if(fabs(angError) < 3) {
             angPower = 0;
         }
         else {
@@ -189,26 +206,28 @@ void forwardPD(int inches, double limit, double f_kP, double f_kD, double f_kP_T
         // }
 
 
-        if(fabs(latError) < 2) {
+        if(fabs(latError) < 1) {
             timeAtError+=10;
         }
         
         
-        if(totalTime > 4000) {
+        if(totalTime > 7000) {
+            controller.rumble("---");
             break;
         }
-        if(timeAtError > 750) {
+        if(timeAtError > 500) {
+            controller.rumble(".");
             break;
         }
 
-        latPower *= dir;
+        // latPower;
 
         LeftDT.move_voltage(latPower + angPower);
         RightDT.move_voltage(latPower - angPower);
 
 
         pros::delay(10);
-    }while(fabs(goal - curInches) > 0.5);
+    }while(true);
 
     LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
     RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);

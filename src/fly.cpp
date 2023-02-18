@@ -5,10 +5,7 @@
 #include <queue>
 #include "fly.h"
 
-const int rpmThreshold = 100;
-int maxVolt = 12000;
-int maxRPM = 3200;
-
+//--------------------------// Mutex Management //--------------------------//	
 pros::Mutex rpmMutex;
 double target_rpm = 0;
 
@@ -27,20 +24,16 @@ double getFlywheelRPM() {
 }
 
 //--------------------------// FlyWheel //--------------------------//	
-
+const int rpmThreshold = 100;
 bool flyLast = false;
 
 void flySpeed() {
-	float kV = 3.6;
-	float kS = 1200;
-	float kP = 0;
-	float kI = 0;
-
+	float kV = 3.3;
+	float kS = 700;
+	
 	float flyPower = 0;
-	float flyError = 0;
-	float flyIntegral = 0;
-	float prevFlyError = flyError;
 
+	//CRUCIAL!!
 	Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 
 	while(true) {
@@ -53,9 +46,9 @@ void flySpeed() {
 			flyLast = false;
 		}
 
-		//Get flywheel target speed and current speed
+		//Note: Multiply by 6 because direct cartridge is 3600 RPM
 		float targetSpeed = getFlywheelRPM();
-		currentSpeed = SMA_Filter(6 * Fly.get_actual_velocity());
+		float currentSpeed = SMA_Filter(6 * Fly.get_actual_velocity());
 
 		//Calculate error
 		flyError = targetSpeed - currentSpeed;
@@ -65,6 +58,7 @@ void flySpeed() {
 			flyPower = 0;
 		}
 		else {
+			//Bang-Bang
 			if(flyError > rpmThreshold){
 				flyPower = 12000;
 			}
@@ -72,21 +66,13 @@ void flySpeed() {
 				flyPower = 0;
 			}
 			else {	
-				// flyIntegral += flyError;
-
-				//Integral checks (zero crossing & outside useful range)
-				// if(std::signbit(flyError) != std::signbit(prevFlyError)) {
-				// 	flyIntegral = 0;
-				// }
-				// if(flyError > 20) {
-				// 	flyIntegral = 0;
-				// }
-				
-				// flyPower = (kV * targetSpeed) + (flyError * kP) + (flyIntegral * kI);
-				flyPower = (kV * targetSpeed) + kS + (flyError * kP);
+				//Feedforward in y=mx+b form
+				flyPower = (kV * targetSpeed) + kS;
 			}
+
 		}
 		
+		//Voltage Caps
 		if(flyPower < 0) {
 			flyPower = 0;
 		}
@@ -96,110 +82,12 @@ void flySpeed() {
 
 		Fly.move_voltage(flyPower);
 
-		prevFlyError = flyError;
-
-		printf("%.2f\n", currentSpeed);
+		//Debugging Utils
 		pros::lcd::print(5, "Fly: %f\n", currentSpeed);
 		pros::lcd::print(6, "power: %f\n", flyPower);
 		pros::delay(10);
 	}
 }
-
-// #include "main.h"
-// #include "cmath"
-// #include "globals.h"
-// #include "variables.h"
-// #include <queue>
-// #include "fly.h"
-
-// const int rpmThreshold = 100;
-// int maxVolt = 12000;
-// int maxRPM = 3000;
-
-// pros::Mutex rpmMutex;
-// double target_rpm = 0;
-
-// void setFlywheelRPM(double targetRPM) {
-//     rpmMutex.take();
-//     target_rpm = targetRPM;
-//     rpmMutex.give();
-// }
-
-// double getFlywheelRPM() {
-//     double tRPM;
-//     rpmMutex.take();
-//     tRPM = target_rpm;
-//     rpmMutex.give();
-//     return tRPM;
-// }
-
-// //--------------------------// FlyWheel //--------------------------//	
-
-// bool flyLast = false;
-
-// void flySpeed() {
-// 	float kP = 20;
-// 	float kI = 4;
-// 	float flyPower = 0;
-// 	float flyError = 0;
-// 	float flyIntegral = 0;
-// 	float prevFlyError = flyError;
-
-// 	Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
-
-// 	while(true) {
-// 		//Toggle Logic
-// 		if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2)) && !flyLast) {
-// 			flyState = !flyState;
-// 			flyLast = true;
-// 		}
-// 		else if(!((controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2)))) {
-// 			flyLast = false;
-// 		}
-
-// 		//Get flywheel target speed and current speed
-// 		float targetSpeed = getFlywheelRPM();
-// 		currentSpeed = SMA_Filter(6 * Fly.get_actual_velocity());
-
-// 		//Calculate error
-// 		flyError = targetSpeed - currentSpeed;
-
-// 		//Base voltage for the target speed
-// 		float holdPower = targetSpeed * maxVolt/maxRPM;
-
-// 		//Set speed
-// 		if(targetSpeed == 0) {
-// 			flyPower = 0;
-// 		}
-// 		else if(flyError > rpmThreshold){
-// 			flyPower = 12000;
-// 			flyIntegral = 0;
-// 		}
-// 		else {	
-// 			flyIntegral += flyError;
-
-// 			//Integral checks (zero crossing & outside useful range)
-// 			if(std::signbit(flyError) != std::signbit(prevFlyError)) {
-// 				flyIntegral = 0;
-// 			}
-// 			if(flyError > 20) {
-// 				flyIntegral = 0;
-// 			}
-			
-// 			flyPower = holdPower + (flyError * kP) + (flyIntegral * kI);
-// 		}
-		
-// 		Fly.move_voltage(flyPower);
-
-// 		prevFlyError = flyError;
-
-
-// 		printf("%.2f\n", currentSpeed);
-// 		pros::lcd::print(5, "Fly: %f\n", currentSpeed);
-// 		pros::lcd::print(6, "power: %f\n", flyPower);
-// 		pros::delay(10);
-// 	}
-// }
 
 //--------------------------// Filter //--------------------------//	
 std::queue<double> smaData;

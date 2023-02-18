@@ -16,7 +16,7 @@ void pivot(double angle);
 void turn(double angle);
 void setPIDvalues();
 
-void forwardPD(int inches, double limit, double f_kP, double f_kD, double f_kP_Theta);
+void forwardPD(int inches, double limit, double f_kP_Theta);
 
 void oldDriveArcPD(int leftTicks, int rightTicks, double limit, int dir);
 

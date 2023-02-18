@@ -43,7 +43,8 @@ void initialize() {
 	}
 	inertial.set_rotation(0.00);
 
-	setPIDvalues();
+	// setPIDvalues();
+	backEncoder.reset();
 	pros::Task odomStuff (odometry);
 	pros::Task flywheelStuff (flySpeed);
 }
@@ -82,7 +83,10 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-	RollerSide();
+	LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
+	RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
+
+	// RollerSide();
 	// nonRoller();
 	// ray();
 	// progSkills();
@@ -137,7 +141,7 @@ void opcontrol() {
 		}
 		else {
 			driveSense = 0.7;
-			turnSense = 0.52;
+			turnSense = 0.6;
 			driveState = "Off :C  ";
 		}
 
@@ -168,6 +172,10 @@ void opcontrol() {
 		// *---*---*---*---*---*--INTAKE, INDEXER, AND ROLLER--*---*---*---*---*---*---*---*
 		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
 			IIR.move_voltage(-12000);
+			// IIR.move_voltage(-12000);
+			// pros::delay(100);
+			// IIR.move_voltage(0);
+			// pros::delay(100);
 		}
 		else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
 			IIR.move_voltage(8000);
@@ -181,17 +189,9 @@ void opcontrol() {
 
 		// *---*---*---*---*---*--FLYWHEEL CONTROLLER--*---*---*---*---*---*---*---*
 		if(flyState == true) {
-			// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)){ 
-				// setFlywheelRPM(2200);
-			// }
-			// else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
-				// setFlywheelRPM(2500);
-			// }
-			// else {
-				setFlywheelRPM(1900);
-			// }
+			setFlywheelRPM(1950);
 
-			if(fabs(getFlywheelRPM() - currentSpeed) < 30) {
+			if(flyError < 30) {
 				controller.rumble("-");
 			}
 		}
@@ -202,25 +202,22 @@ void opcontrol() {
 		// *---*---*---*---*---*--DEBUGGING UTILS--*---*---*---*---*---*---*---*
 		if(!(controllerTime % 5)) {
 			controller.print(0, 0, "Full power: %s", driveState);
-			// controller.print(0, 0, "RPM: %.1f", currentSpeed);
+			// controller.print(0, 0, "RPM: %.1f", getFlywheelRPM()-flyError);
+			// controller.clear();
 		}
 
 		pros::lcd::print(2, "inertial: %f\n", inertial.get_rotation());
 
-		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
-		// 	shoot(3, 1900, 3000, 50);
-		// 	flyState = false;
-		// 	setFlywheelRPM(0);
+		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
+		// 	forwardPD(12, 1, 0);
 		// }
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
-			// progSkills();
-			// turn(-90);
-			// forwardPD(40, 1, 510, 300, 50);
-			// shoot(3, 2300, 6000, 5, 20);
-			// pros::delay(2000);
-			// flyState = false;
-			// setFlywheelRPM(0);
+		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
+			// forwardPD(24, 1, 150);
+			shoot(3, 2200, 5000, 30, 50);
 		}
+		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
+		// 	forwardPD(5, 1, 0);
+		// }
 		
 
 		pros::delay(10);
@@ -243,16 +240,16 @@ void progSkills() {
 	IIR.move_voltage(0);
 
 	// forward turn -45 and drive forward more 
-	forwardPD(-6, 1, 1000, 400, 50);
+	// forwardPD(-6, 1, 1000, 400, 50);
 	turn(110);
 	IIR.move_voltage(12000);
 
 	// intake 3rd disk and get second roller
-	forwardPD(25, 0.6, 700, 400, 50);
+	// forwardPD(25, 0.6, 700, 400, 50);
 	turn(-20);
 	IIR.move_voltage(0);
 
-	forwardPD(7, 1, 1000, 400, 50);
+	// forwardPD(7, 1, 1000, 400, 50);
 	IIR.move_voltage(12000);
 	LeftDT.move_voltage(3000);
 	RightDT.move_voltage(3000);
@@ -263,11 +260,11 @@ void progSkills() {
 	pros::delay(100);
 	IIR.move_voltage(0);
 	// turn to goal and drive straight 
-	forwardPD(-8, 1, 800, 400, 50);
+	// forwardPD(-8, 1, 800, 400, 50);
 	turn(-85);
 	flyState = true;
 	setFlywheelRPM(1500);
-	forwardPD(-50, 0.7, 1100, 400, 50);
+	// forwardPD(-50, 0.7, 1100, 400, 50);
 
 	// shoot 3 disks 
 	shoot(3, 2000, 6000, 100, 20);
@@ -309,7 +306,7 @@ void nonRoller() {
 	flyState = true;
 	setFlywheelRPM(2400);
 
-	forwardPD(26, 0.7, 1000, 600, 0);
+	// forwardPD(26, 0.7, 1000, 600, 0);
 
 
 	turn(-146);
@@ -321,7 +318,7 @@ void nonRoller() {
 
 	turn(-77);
 
-	forwardPD(35, 1, 1100, 300, 0);
+	// forwardPD(35, 1, 1100, 300, 0);
 	// flyState = false;
     // setFlywheelRPM(0);
 	

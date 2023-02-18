@@ -11,6 +11,5 @@ int goalY = 0;
 
 bool flyState = false;
 
-float absoluteRight = 0;
-
-double currentSpeed = 0;
+float flyError = 0;
+float absoluteBack = 0;
