@@ -36,6 +36,28 @@ void setPIDvalues() {
     pdVals[3][2] = 180;
 }
 
+void bucket(int rpmSpeed, int threshold, int timeout) {
+    setFlywheelRPM(rpmSpeed);
+    for(int indexNum = 0; indexNum < 3; indexNum++) {
+        pros::delay(100);
+        if((indexNum == 0) && (rpmSpeed > 2500)) {
+            pros::delay(100);
+        }
+
+        int timeSet = pros::millis();
+        while(flyError > threshold) {
+            pros::delay(10);
+
+            if(pros::millis()-timeSet > timeout) {
+                controller.rumble("-");
+                break;
+            }
+        }
+
+        pros::delay(200);
+        index(indexNum);
+    }
+}
 
 void shoot(int num_disks, int rpmSpeed, int timeout, int threshold, int waitMsec) {
     flyState = true;
@@ -56,85 +78,103 @@ void shoot(int num_disks, int rpmSpeed, int timeout, int threshold, int waitMsec
         }
 
         index(i);
-        // pros::delay(10);
-        // timeSet = 0;
-        // while(flyError < 200) {
-        //     timeSet+=10;
-        //     pros::delay(10);
-
-        //     IIR.move_voltage(-12000);
-
-        //     if(timeSet > timeout) {
-        //         controller.rumble("-");
-        //         break;
-        //     }
-        // }
-        // IIR.move_voltage(0);
     }
 }
 
 void index(int disk) {
     IIR.move_voltage(-12000);
 	controller.rumble(".");
-    if((disk == 2) || (disk == 3)) {
-        pros::delay(600);
+    if(disk == 2) {
+        pros::delay(200);
     }
     else if(disk == 1) {
-        pros::delay(250);
+        pros::delay(140);
     }
     else {
-        pros::delay(100);
+        pros::delay(120);
     }
 
 	IIR.move_voltage(0);
-    // pros::delay(5);
 }
 
 void pivot(double angle) {
-	//theta = total turn
-	//angle = target angle (0 to 360 degrees)
-	//startAngle = current angle of robot -inf < degrees < inf
-	double theta = 0;
-	int startAngle = inertial.get_rotation();
-	//get relative to (0 to 360 degrees)
-	startAngle = startAngle % 360;
+    //theta = total turn
+    //angle = target angle (0 to 360 degrees)
+    //startAngle = current angle of robot -inf < degrees < inf
+    double theta = 0;
+    double startAngle = inertial.get_rotation();
 
-	//two cases
-	if(startAngle > 180) {
-		theta = 360 - startAngle;
-		theta += angle;
-		if(theta >= 180) {
-			//if the turn is bigger than 180, impractical - turn the other way
-			theta = 360 - theta;
-			theta*=-1;
-		}
-	}
-	else if(startAngle <= 180) {
-		theta = (theta + startAngle) * -1;
-		theta+=angle;
-		if(theta >= 180) {
-			//if the turn is bigger than 180, impractical - turn the other way
-			theta = 360 - theta;
-			theta*=-1;
-		}
-	}
+    // startAngle mod stuff - getting relative to (0 to 360 degrees)
+    int quotient;
+    if(startAngle < 0){
+        quotient = -1 * int(startAngle / 360) + 1;
+        startAngle = startAngle + quotient * 360;
+    }
+    else{
+        quotient = int(startAngle / 360);
+        startAngle = startAngle - quotient * 360;
+    }
 
-	//theta is final how much to turn
-	turn(theta);
+    // target angle fr
+    theta = angle - startAngle;
+    if(fabs(theta) > 180){
+        if(theta > 0){
+            theta = -1 * (360 - theta);
+        }
+        else{
+            theta = 360 + theta;
+        }
+    }
+
+    // if bot is skill issue with negative
+    // if(theta < 0){
+    //     theta = 360 + theta;
+    // }
+
+    // turn!!
+    turn(theta);
+	// //theta = total turn
+	// //angle = target angle (0 to 360 degrees)
+	// //startAngle = current angle of robot -inf < degrees < inf
+	// double theta = 0;
+	// int startAngle = inertial.get_rotation();
+	// //get relative to (0 to 360 degrees)
+	// startAngle = startAngle % 360;
+
+	// //two cases
+	// if(startAngle > 180) {
+	// 	theta = 360 - startAngle;
+	// 	theta += angle;
+	// 	if(theta >= 180) {
+	// 		//if the turn is bigger than 180, impractical - turn the other way
+	// 		theta = 360 - theta;
+	// 		theta*=-1;
+	// 	}
+	// }
+	// else if(startAngle <= 180) {
+	// 	theta = (theta + startAngle) * -1;
+	// 	theta+=angle;
+	// 	if(theta >= 180) {
+	// 		//if the turn is bigger than 180, impractical - turn the other way
+	// 		theta = 360 - theta;
+	// 		theta*=-1;
+	// 	}
+	// }
+
+	// //theta is final how much to turn
+	// turn(theta);
 }
 
-void forwardPD(int inches, double limit, double f_kP_Theta) {
+void forwardPD(int inches, double limit) {
     LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
     RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-    inertial.tare_rotation();
 
     absoluteBack = 0;
-    float curInches = absoluteBack;
-    float goal = curInches + inches;
+    float curInches = 0;
 
     //1 or -1, forward or backward
     float latError;
-    // int dir = abs(inches)/inches;
+    int dir = abs(inches)/inches;
 
     //save initial heading for angle correction
     float initHeading = inertial.get_rotation();
@@ -143,88 +183,57 @@ void forwardPD(int inches, double limit, double f_kP_Theta) {
     float prevLatError = 0;
     int latPower = 0;
 
-    int angPower = 0;
-    bool turnRight;
-
-    int timeAtError = 0;
-    int totalTime = 0;
+    int smallError = 0;
+    int largeError = 0;
 
     //Constants
-    float kP = 600;
-    float kD = inches * 1000;
-    float kP_Theta = f_kP_Theta;
+    float kP = 775;
+    float kD = abs(inches) * 900;
+    float kP_Theta = 70;
 
     do {
-        totalTime+=10;
+        pros::lcd::print(2, "inertial: %f\n", inertial.get_rotation());
+        // pros::lcd::print(3, "ang: %f\n", angError);
         curInches = absoluteBack;
 
         //Calculate error from desired
-        latError = inches - curInches;
-        float angError = initHeading - inertial.get_rotation();
+        latError = fabs(inches - curInches);
 
         //Derivative term on lateral
         derivative = (latError - prevLatError)/10;
         prevLatError = latError;
         
-        //Check which direction to turn
-        if(angError > 0) {
-            turnRight = false;
-        }
-        else {
-            turnRight = true;
-        }
-
         //Calculate lateral power (Proportional + Derivative)
-        latPower = (kP * latError) + (kD * derivative);
+        latPower = dir * ((kP * latError) + (kD * derivative));
 
         //Use limit to cap the motor's max output voltage (lateral)
-        if(latPower >= (11000 * limit)) {
-			latPower = 11000 * limit;
+        if(abs(latPower) >= (12000 * limit)) {
+			if(dir == 1) {
+                latPower = 12000 * limit;
+            }else if(dir == -1) {
+                latPower = -12000 * limit;
+            }
 		}
 
-        if(fabs(angError) < 3) {
-            angPower = 0;
+        if(fabs(latError) <= 1) {
+            smallError+=10;
         }
-        else {
-            if(turnRight) {
-                //Turn right
-                angPower = angError * kP_Theta;
-            }
-            else {
-                //Turn left
-                angPower = angError * kP_Theta * -1;
-            }
-
-            //Apply same limit to angle
-            if(angPower >= 3000) {
-                angPower = 3000;
-            }
-        }
-
-        // if(fabs(latError) < 5) {
-        //     angPower = 0;
-        // }
-
-
-        if(fabs(latError) < 1) {
-            timeAtError+=10;
+        if(fabs(latError) <= 3) {
+            largeError+=10;
         }
         
         
-        if(totalTime > 7000) {
-            controller.rumble("---");
+        if(smallError > 100) {
+            controller.rumble("-");
             break;
         }
-        if(timeAtError > 500) {
+        if(largeError > 500) {
             controller.rumble(".");
             break;
         }
 
-        // latPower;
-
-        LeftDT.move_voltage(latPower + angPower);
-        RightDT.move_voltage(latPower - angPower);
-
+        LeftDT.move_voltage(latPower + (kP_Theta * (initHeading - inertial.get_rotation())));
+        RightDT.move_voltage(latPower - (kP_Theta * (initHeading - inertial.get_rotation())));
 
         pros::delay(10);
     }while(true);
@@ -288,99 +297,73 @@ void oldDriveArcPD(int leftTicks, int rightTicks, double limit, int dir) {
 }
 
 
-void turn(double angle) {
-    int timeAtError = 0;
-    int totalTime = 0;
+void turn(float angle) {
+    int smallErr = 0;
+    int largeErr = 0;
+    int dir = fabs(angle)/angle;
 
-	double error = 0;
-	double prevError = 0;
-	double derivative = 0;
-	double power = 0;
-	double kP, kD;
-	double kI = 0;
-    //3.5
-    double integral = 0;
-    
-    int knownPos = -1;
-    for(int i=0; i<4; i++) {
-        if(angle == pdVals[i][2]) {
-            knownPos = i;
-        }
+	float error = 0;
+	float prevError = 0;
+	float derivative = 0;
+    float integral = 0;
+	float power = 0;
+	float kP = 190;
+    if(angle < 90) {
+        kP -= 15;
     }
+    float kI = 6;
+    float kD = fabs(angle) * 150;
 
-    if(knownPos != -1) {
-        kP = pdVals[knownPos][0];
-        kD = pdVals[knownPos][1];
-    }
-    else {
-        //extrapolate data to linear regression i think???
-        if(fabs(angle) >= 60) {
-            kP = pdVals[1][0];
-            kD = pdVals[1][1];
-        }
-        else {
-            kP = pdVals[0][0];
-            kD = pdVals[0][1];
-        }
-    }
-
-    if(angle == -20) {
-        kP = pdVals[0][0] + 40;
-        kD = pdVals[0][1];
-    }
-
-	double target = angle + inertial.get_rotation();
+	float target = angle + inertial.get_rotation();
 	
 	do {
 		error = target - inertial.get_rotation();
 		derivative = (error - prevError)/10;
-        integral+=error;
 		prevError = error;
 
-        if(std::signbit(error) != std::signbit(prevError)) {
-            integral = 0;
-        }
+        integral = integral + error;
+
         if(error > 10) {
             integral = 0;
         }
 
 		power = (error * kP) + (derivative*kD) + (integral * kI);
+        // power = (error * kP) + (derivative * kD);
 
-        if(power > 12000) {
-            power = 12000;
+        //Cap
+        if(fabs(power) >= 12000) {
+            if(dir == 1) {
+                power = 12000;
+            } 
+            else if(dir == -1) {
+                power = -12000;
+            }
         }
 
 		RightDT.move_voltage(-power);
 		LeftDT.move_voltage(power);
 
-        // pros::lcd::print(3, "theta: %f\n", inertial.get_rotation());
+        pros::lcd::print(3, "theta: %f\n", inertial.get_rotation());
         pros::lcd::print(4, "power: %f\n", power);
 
-        if(fabs(target - inertial.get_rotation()) < 0.3) {
-            timeAtError+=10;
+        if(fabs(error) <= 1) {
+            smallErr+=10;
         }
-        
-        totalTime+=10;
+        if(fabs(error) <= 3) {
+            largeErr+=10;
+        }  
 
-        if(timeAtError > 500) {
+        if(smallErr > 100) {
             controller.rumble(".");
             break;
         }
-        if(totalTime > 1300) {
+        if(largeErr > 500) {
             controller.rumble("-");
             break;
         }
 
         pros::delay(10);
-        // std::cout << totalTime << "," << power << "," << error << "\n";
-
 	}while(true);
-
-    // pros::lcd::print(5, "error: %f\n", target - inertial.get_rotation());
-
-    // if(fabs(target - inertial.get_rotation()) > 10) {
-    //     turn(target - inertial.get_rotation());
-    // }
 
     LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
     RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);

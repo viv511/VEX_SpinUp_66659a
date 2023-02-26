@@ -10,13 +10,14 @@
 using namespace pros;
 
 void shoot(int num_disks, int rpmSpeed, int timeout, int threshold, int waitMsec);
+void bucket(int rpmSpeed, int threshold, int timeout);
 void index(int disk);
 
 void pivot(double angle);
-void turn(double angle);
+void turn(float angle);
 void setPIDvalues();
 
-void forwardPD(int inches, double limit, double f_kP_Theta);
+void forwardPD(int inches, double limit);
 
 void oldDriveArcPD(int leftTicks, int rightTicks, double limit, int dir);
 

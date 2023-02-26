@@ -119,8 +119,8 @@ void opcontrol() {
 
 	long long controllerTime = 0;
 
-	bool defenseLast = false;
-	bool defenseState = false;
+	bool defenseLast = true;
+	bool defenseState = true;
 
 	std::string driveState = "";
 
@@ -140,8 +140,8 @@ void opcontrol() {
 			driveState = "On :D  ";
 		}
 		else {
-			driveSense = 0.7;
-			turnSense = 0.6;
+			driveSense = 0.9;
+			turnSense = 0.4;
 			driveState = "Off :C  ";
 		}
 
@@ -189,14 +189,29 @@ void opcontrol() {
 
 		// *---*---*---*---*---*--FLYWHEEL CONTROLLER--*---*---*---*---*---*---*---*
 		if(flyState == true) {
-			setFlywheelRPM(1950);
+			setFlywheelRPM(2000);
 
-			if(flyError < 30) {
+			if(flyError < 20) {
 				controller.rumble("-");
 			}
 		}
 		else {
 			setFlywheelRPM(0);
+		}
+
+		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
+			forwardPD(24, 1);
+			// bucket(2800, 10, 6000);
+		}
+		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
+			forwardPD(-24, 1);
+		}
+		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
+			forwardPD(24, 0.6);
+			// bucket(2800, 10, 6000);
+		}
+		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
+			forwardPD(-24, 0.6);
 		}
 
 		// *---*---*---*---*---*--DEBUGGING UTILS--*---*---*---*---*---*---*---*
@@ -211,12 +226,17 @@ void opcontrol() {
 		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
 		// 	forwardPD(12, 1, 0);
 		// }
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
-			// forwardPD(24, 1, 150);
-			shoot(3, 2200, 5000, 30, 50);
-		}
 		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
-		// 	forwardPD(5, 1, 0);
+		// 	pivot(0);
+		// }
+		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
+		// 	pivot(90);
+		// }
+		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
+		// 	pivot(179);
+		// }
+		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
+		// 	pivot(-90);
 		// }
 		
 
