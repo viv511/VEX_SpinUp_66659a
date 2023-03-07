@@ -17,7 +17,7 @@ pros::Controller controller(pros::E_CONTROLLER_MASTER);
 //sensor
 pros::IMU inertial(13);
 // pistons
-pros::ADIDigitalOut endgame1('G');
+pros::ADIDigitalOut endgame1('E');
 // pros::ADIDigitalOut endgame2('F');
 
 pros::ADIEncoder backEncoder('A', 'B', true);

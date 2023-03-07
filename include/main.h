@@ -85,9 +85,12 @@ double avg_r();
 double avg_l();
 
 void progSkills();
+void regionals();
 void ray();
 void nonRoller();
 void RollerSide();
+
+void waitShoot(int waitTime);
 
 void backTime(int speed, double sec);
 

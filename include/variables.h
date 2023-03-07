@@ -14,7 +14,7 @@ extern int goalX;
 extern int goalY;
 
 extern bool flyState;
-
+extern bool autonThreshold;
 extern float flyError;
 
 extern float absoluteBack;

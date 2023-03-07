@@ -83,6 +83,7 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
+	autonThreshold = true;
 	LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
 	RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
 
@@ -90,6 +91,7 @@ void autonomous() {
 	// nonRoller();
 	// ray();
 	// progSkills();
+	regionals();
 }
 /**
  * 
@@ -107,6 +109,7 @@ void autonomous() {
  */
 
 void opcontrol() {
+	autonThreshold = false;
 	flyState = false;
 	setFlywheelRPM(0);
 	LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
@@ -119,10 +122,18 @@ void opcontrol() {
 
 	long long controllerTime = 0;
 
-	bool defenseLast = true;
-	bool defenseState = true;
+	bool defenseLast = false;
+	bool defenseState = false;
+
+	std::string zoom = "";
+
+	bool speedLast = false;
+	bool speedState = false;
 
 	std::string driveState = "";
+	
+	float curAng = inertial.get_rotation();
+	float prevAng = curAng;
 
 	while(true) {
 		// *---*---*---*---*---*---*--CONTROLLER AND DRIVE--*---*---*---*---*---*---*---*---*
@@ -137,14 +148,15 @@ void opcontrol() {
 		if(defenseState) {
 			driveSense = 1;
 			turnSense = 1;
-			driveState = "On :D  ";
+			driveState = "ON";
 		}
 		else {
-			driveSense = 0.9;
-			turnSense = 0.4;
-			driveState = "Off :C  ";
+			driveSense = 0.75;
+			turnSense = 0.33;
+			driveState = "OFF";
 		}
 
+		// curAng = inertial.get_rotation();
 		//Bind longitude and latitude from -1 to 1 from the controller
 		float lon = ((controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y)) / 127.0) * driveSense;
 		float lat = ((controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X)) / 127.0) * turnSense;
@@ -157,28 +169,33 @@ void opcontrol() {
 		rightPower = ((lon - lat) / mag) * 600;
 
 		//Assign power
-		LeftDT.move_velocity(leftPower);
-		RightDT.move_velocity(rightPower);
+		// if(lat == 0) {
+			// LeftDT.move_velocity(leftPower + (15 * (prevAng - curAng)));
+			// RightDT.move_velocity(rightPower - (15 * (prevAng - curAng)));
+		// }
+		// else {
+			LeftDT.move_velocity(leftPower);
+			RightDT.move_velocity(rightPower);
+		// }
+		// prevAng = curAng;
 
 
 		// *---*---*---*---*---*---*---*--ENDGAME--*---*---*---*---*---*---*---*---*---*
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
-			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
+		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
+			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
 				controller.rumble(".");
 				endgame1.set_value(true);
 			}
 		}
+		
 
 		// *---*---*---*---*---*--INTAKE, INDEXER, AND ROLLER--*---*---*---*---*---*---*---*
 		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
+			//Index
 			IIR.move_voltage(-12000);
-			// IIR.move_voltage(-12000);
-			// pros::delay(100);
-			// IIR.move_voltage(0);
-			// pros::delay(100);
 		}
 		else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
-			IIR.move_voltage(8000);
+			IIR.move_voltage(9000);
 		}
 		else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
 			IIR.move_voltage(12000);
@@ -187,57 +204,54 @@ void opcontrol() {
 			IIR.move_voltage(0);
 		}
 
+		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)) {
+		// 	waitShoot(100);
+		// }
+		
+		
+
 		// *---*---*---*---*---*--FLYWHEEL CONTROLLER--*---*---*---*---*---*---*---*
 		if(flyState == true) {
-			setFlywheelRPM(2000);
+			if(speedState) {
+				setFlywheelRPM(1900);
+				zoom = "-L";
+			}
+			else {
+				setFlywheelRPM(2200);
+				zoom = "-N";
+			}
 
 			if(flyError < 20) {
-				controller.rumble("-");
+				controller.rumble(".");
 			}
 		}
 		else {
 			setFlywheelRPM(0);
+			zoom = "";
+		}
+		if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP)) && !speedLast) {
+			speedState = !speedState;
+			speedLast = true;
+		}
+		else if(!((controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP)))) {
+			speedLast = false;
 		}
 
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
-			forwardPD(24, 1);
-			// bucket(2800, 10, 6000);
-		}
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
-			forwardPD(-24, 1);
-		}
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
-			forwardPD(24, 0.6);
-			// bucket(2800, 10, 6000);
-		}
-		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
-			forwardPD(-24, 0.6);
-		}
+
 
 		// *---*---*---*---*---*--DEBUGGING UTILS--*---*---*---*---*---*---*---*
 		if(!(controllerTime % 5)) {
-			controller.print(0, 0, "Full power: %s", driveState);
+			std::string s = "";
+			s = driveState + zoom;
+			controller.print(0, 0, "Full power: %s", s);
 			// controller.print(0, 0, "RPM: %.1f", getFlywheelRPM()-flyError);
 			// controller.clear();
 		}
+		
 
 		pros::lcd::print(2, "inertial: %f\n", inertial.get_rotation());
 
-		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
-		// 	forwardPD(12, 1, 0);
-		// }
-		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_X)) {
-		// 	pivot(0);
-		// }
-		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
-		// 	pivot(90);
-		// }
-		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
-		// 	pivot(179);
-		// }
-		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
-		// 	pivot(-90);
-		// }
+	
 		
 
 		pros::delay(10);
@@ -246,60 +260,313 @@ void opcontrol() {
 }
 
 void progSkills() {
-	// roller
+	forwardPD(3, 1);
 	IIR.move_voltage(12000);
-
-	LeftDT.move_voltage(4000);
-	RightDT.move_voltage(4000);
 	pros::delay(400);
-	LeftDT.move_voltage(0);
-	RightDT.move_voltage(0);
+	IIR.move_voltage(0);
 
+	forwardPD(-6, 1);
+	pivot(115);
+
+	IIR.move_voltage(12000);
+	forwardPD(14, 0.7);
+	pros::delay(200);
 	
-	pros::delay(300);
+
+	pivot(90);
 	IIR.move_voltage(0);
 
-	// forward turn -45 and drive forward more 
-	// forwardPD(-6, 1, 1000, 400, 50);
-	turn(110);
+	forwardPD(14, 0.9);
 	IIR.move_voltage(12000);
-
-	// intake 3rd disk and get second roller
-	// forwardPD(25, 0.6, 700, 400, 50);
-	turn(-20);
-	IIR.move_voltage(0);
-
-	// forwardPD(7, 1, 1000, 400, 50);
-	IIR.move_voltage(12000);
-	LeftDT.move_voltage(3000);
-	RightDT.move_voltage(3000);
 	pros::delay(400);
-	LeftDT.move_voltage(0);
-	RightDT.move_voltage(0);
+	IIR.move_voltage(0);
 
+	flyState = true;
+	setFlywheelRPM(2200);
+	forwardPD(-10, 0.9);
+	
+	pivot(0);
+
+	IIR.move_voltage(12000);
+	forwardPD(-55, 0.8); 
+	IIR.move_voltage(0);
+
+	pivot(8);
+
+	bucket(2200, 20, 4000, 100);
+
+	pivot(-45);
+	flyState = true;
+	setFlywheelRPM(2200);
+	IIR.move_voltage(12000);
+	forwardPD(23, 0.8);
+
+	pivot(-135);
+	forwardPD(37, 0.65);
+	
+
+	pivot(-43);
+	IIR.move_voltage(0);
+	
+	forwardPD(-7, 1);
+	pros::delay(100);
+	bucket(2200, 20, 4000, 100);
+	pros::delay(200);
+
+	forwardPD(7, 1);
+	
+
+	pivot(-135);
+	forwardPD(30, 0.7);
+	IIR.move_voltage(12000);
+
+	forwardPD(29, 0.4);
+
+	pros::delay(750);
+	IIR.move_voltage(0);
+	pivot(-180);
+	
+	forwardPD(4, 1);
+
+	IIR.move_voltage(12000);
+	pros::delay(400);
+	IIR.move_voltage(0);
+
+	forwardPD(-9, 1);
+
+	flyState = true;
+	setFlywheelRPM(2200);
+
+	pivot(-90);
+	forwardPD(-43, 0.9);
+	pivot(-80);
+
+	bucket(2200, 20, 4000, 100);
+
+	pivot(-71);
+
+	forwardPD(41, 0.7);
+	IIR.move_voltage(12000);
+	forwardPD(22, 0.55);
+	// forwardPD(-10, 1);
+
+	pivot(-90);
+	forwardPD(13, 1);
+	IIR.move_voltage(0);
+
+	IIR.move_voltage(12000);
+	pros::delay(400);
+	IIR.move_voltage(0);
+
+	forwardPD(-10, 1);
+	pivot(-180);
+	
+	flyState = true;
+	setFlywheelRPM(2200);
+
+	forwardPD(-43, 0.9); 
+	pivot(-175);
+
+	bucket(2200, 20, 4000, 200);
+
+	pivot(130);
+	IIR.move_voltage(12000);
+	forwardPD(24, 0.9);
+	pivot(45);
+	forwardPD(25, 0.8);
+
+	flyState = true;
+	setFlywheelRPM(2200);
+	pivot(128);
+
+	forwardPD(-8, 1);
+	IIR.move_voltage(0);
+	
+	pros::delay(200);
+	bucket(2200, 20, 4000, 100);
+	forwardPD(8, 1);
+	
+
+	pivot(45);
+	forwardPD(30, 0.7);	
+	IIR.move_voltage(12000);
+	forwardPD(35, 0.55);
+
+	pivot(90);
+	IIR.move_voltage(0);
+	flyState = true;
+	setFlywheelRPM(2200);
+
+	forwardPD(-46, 1);
+	pros::delay(200);
+	bucket(2200, 20, 4000, 100);
+
+	pivot(92);
+	forwardPD(75, 1);
+	pivot(45);
+	
+}
+
+void waitShoot(int waitTime) {
+	IIR.move_voltage(-12000);
+	pros::delay(120);
+	IIR.move_voltage(0);
+	pros::delay(waitTime);
+
+	IIR.move_voltage(-12000);
+	pros::delay(140);
+	IIR.move_voltage(0);
+	pros::delay(waitTime+50);
+
+	IIR.move_voltage(-12000);
+	pros::delay(350);
+	IIR.move_voltage(0);
+}
+
+void regionals() {
+	flyState = true;
+	setFlywheelRPM(2200);
+	forwardPD(3, 1);
+	IIR.move_voltage(12000);
+	pros::delay(400);
+	IIR.move_voltage(0);
+
+	forwardPD(-6, 1);
+	pivot(115);
+
+	IIR.move_voltage(12000);
+	forwardPD(14, 0.7);
+	pros::delay(200);
+
+	pivot(90);
+	IIR.move_voltage(0);
+
+	forwardPD(13.5, 1);
+	IIR.move_voltage(12000);
+	pros::delay(400);
+	IIR.move_voltage(0);
+
+	forwardPD(-10, 0.9);
+	
+	pivot(0);
+
+	IIR.move_voltage(12000);
+	forwardPD(-55, 0.9); 
+
+	pivot(8);
+	IIR.move_voltage(0);
+
+	bucket(2200, 20, 4000, 100);
+
+	pivot(-45);
+
+	IIR.move_voltage(12000);
+	forwardPD(23, 0.8);
+
+	pivot(-135);
+	forwardPD(37, 0.7);
+
+	pivot(-43);
+	
+	forwardPD(-8, 1);
 	pros::delay(100);
 	IIR.move_voltage(0);
-	// turn to goal and drive straight 
-	// forwardPD(-8, 1, 800, 400, 50);
-	turn(-85);
-	flyState = true;
-	setFlywheelRPM(1500);
-	// forwardPD(-50, 0.7, 1100, 400, 50);
+	bucket(2200, 20, 4000, 100);
 
-	// shoot 3 disks 
-	shoot(3, 2000, 6000, 100, 20);
+	forwardPD(8, 1);
 
-	flyState = false;
-	setFlywheelRPM(0);
-	// back up to original spot 
-	// turn 45 degrees
-	// intake 3 disks
-	// turn and shoot 3 disks
-	// go back to center
-	// turn on disk line and pick up 2
-	// go between stacks to get to roller watch movement on4082b
-	// get 4th roller like the beginning with disk = 3
-	// drive and shoot 3
+	pivot(-135);
+	forwardPD(30.5, 0.8);
+	IIR.move_voltage(12000);
+
+	forwardPD(29, 0.4);
+
+	pros::delay(750);
+	pivot(-180);
+	IIR.move_voltage(0);
+	forwardPD(3, 1);
+	
+	IIR.move_voltage(12000);
+	pros::delay(400);
+	IIR.move_voltage(0);
+
+	forwardPD(-6, 1);
+
+	pivot(-90);
+	IIR.move_voltage(12000);
+	forwardPD(-43, 0.9);
+	IIR.move_voltage(0);
+	pivot(-85);
+
+	bucket(2200, 20, 4000, 100);
+
+	pivot(-69);
+
+	forwardPD(38, 0.7);
+	IIR.move_voltage(12000);
+	forwardPD(25, 0.6);
+	forwardPD(-10.5, 1);
+	
+
+	pivot(-90);
+	IIR.move_voltage(0);
+	forwardPD(23.5, 1);
+
+	IIR.move_voltage(12000);
+	pros::delay(400);
+	IIR.move_voltage(0);
+
+	forwardPD(-13, 1);
+	pivot(-180);
+	IIR.move_voltage(12000);
+	forwardPD(-43, 0.9); 
+	IIR.move_voltage(0);
+	pivot(-175);
+
+	bucket(2200, 20, 4000, 100);
+
+	pivot(135);
+	IIR.move_voltage(12000);
+	forwardPD(24, 0.9);
+	pivot(45);
+	forwardPD(33, 0.8);
+
+	pivot(138);
+
+	forwardPD(-8, 1);
+	
+	pros::delay(100);
+	IIR.move_voltage(0);
+	bucket(2200, 20, 4000, 100);
+	forwardPD(8, 1);
+	
+
+	pivot(45);
+	forwardPD(30, 0.7);	
+	IIR.move_voltage(12000);
+	forwardPD(28, 0.5);
+	forwardPD(10, 1);
+
+	pivot(90);
+	IIR.move_voltage(0);
+
+	forwardPD(-36, 1);
+
+	bucket(2200, 20, 4000, 100);
+
+	pivot(180);
+	IIR.move_voltage(12000);
+	forwardPD(36, 0.9);
+	pivot(138);
+	forwardPD(-5, 1);
+	IIR.move_voltage(0);
+
+	bucket(2200, 20, 4000, 100);
+	forwardPD(5, 1);
+	pivot(-160);
+	forwardPD(60, 1);
+	pivot(-135);
+	controller.rumble("-");
 }
 
 void RollerSide() {

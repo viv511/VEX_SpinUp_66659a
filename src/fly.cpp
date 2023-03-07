@@ -24,11 +24,11 @@ double getFlywheelRPM() {
 }
 
 //--------------------------// FlyWheel //--------------------------//	
-const int rpmThreshold = 20;
+int rpmThreshold = 100;
 bool flyLast = false;
 
 void flySpeed() {
-	float kV = 3.35;
+	float kV = 3.32;
 	float kS = 975;
 	
 	float flyPower = 0;
@@ -37,6 +37,13 @@ void flySpeed() {
 	Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 
 	while(true) {
+		if(autonThreshold) {
+			rpmThreshold = 25;
+		}
+		else {
+			rpmThreshold = 100;
+		}
+
 		//Toggle Logic
 		if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2)) && !flyLast) {
 			flyState = !flyState;
@@ -63,7 +70,7 @@ void flySpeed() {
 				flyPower = 12000;
 			}
 			else if(flyError < -rpmThreshold) {
-				flyPower = flyPower/2;
+				flyPower = 0;
 			}
 			else {	
 				//Feedforward in y=mx+b form

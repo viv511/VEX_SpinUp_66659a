@@ -36,27 +36,23 @@ void setPIDvalues() {
     pdVals[3][2] = 180;
 }
 
-void bucket(int rpmSpeed, int threshold, int timeout) {
+void bucket(int rpmSpeed, int threshold, int timeout, int wait) {
+    flyState = true;
     setFlywheelRPM(rpmSpeed);
-    for(int indexNum = 0; indexNum < 3; indexNum++) {
-        pros::delay(100);
-        if((indexNum == 0) && (rpmSpeed > 2500)) {
-            pros::delay(100);
+
+    int timeSet = 0;
+    pros::delay(50);
+    while(flyError > threshold) {
+        pros::delay(10);
+        timeSet+=10;
+
+        if(timeSet > timeout) {
+            controller.rumble("-");
+            break;
         }
-
-        int timeSet = pros::millis();
-        while(flyError > threshold) {
-            pros::delay(10);
-
-            if(pros::millis()-timeSet > timeout) {
-                controller.rumble("-");
-                break;
-            }
-        }
-
-        pros::delay(200);
-        index(indexNum);
     }
+
+    waitShoot(wait);
 }
 
 void shoot(int num_disks, int rpmSpeed, int timeout, int threshold, int waitMsec) {
@@ -85,7 +81,7 @@ void index(int disk) {
     IIR.move_voltage(-12000);
 	controller.rumble(".");
     if(disk == 2) {
-        pros::delay(200);
+        pros::delay(700);
     }
     else if(disk == 1) {
         pros::delay(140);
@@ -117,7 +113,7 @@ void pivot(double angle) {
 
     // target angle fr
     theta = angle - startAngle;
-    if(fabs(theta) > 180){
+    if(fabs(theta) >= 180){
         if(theta > 0){
             theta = -1 * (360 - theta);
         }
@@ -165,7 +161,8 @@ void pivot(double angle) {
 	// turn(theta);
 }
 
-void forwardPD(int inches, double limit) {
+void forwardPD(float inches, double limit) {
+    int totalTime = 0;
     LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
     RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
 
@@ -174,7 +171,7 @@ void forwardPD(int inches, double limit) {
 
     //1 or -1, forward or backward
     float latError;
-    int dir = abs(inches)/inches;
+    int dir = fabs(inches)/inches;
 
     //save initial heading for angle correction
     float initHeading = inertial.get_rotation();
@@ -187,11 +184,13 @@ void forwardPD(int inches, double limit) {
     int largeError = 0;
 
     //Constants
-    float kP = 775;
-    float kD = abs(inches) * 900;
-    float kP_Theta = 70;
+    float kP = 800;
+    float kD = fabs(inches) * 900;
+    float kP_Theta = 600;
+    //120
 
     do {
+        totalTime+=10;
         pros::lcd::print(2, "inertial: %f\n", inertial.get_rotation());
         // pros::lcd::print(3, "ang: %f\n", angError);
         curInches = absoluteBack;
@@ -229,6 +228,10 @@ void forwardPD(int inches, double limit) {
         }
         if(largeError > 500) {
             controller.rumble(".");
+            break;
+        }
+        if(totalTime > 4500) {
+            controller.rumble("-");
             break;
         }
 
@@ -298,6 +301,7 @@ void oldDriveArcPD(int leftTicks, int rightTicks, double limit, int dir) {
 
 
 void turn(float angle) {
+    int totalTime = 0;
     int smallErr = 0;
     int largeErr = 0;
     int dir = fabs(angle)/angle;
@@ -305,30 +309,84 @@ void turn(float angle) {
 	float error = 0;
 	float prevError = 0;
 	float derivative = 0;
-    float integral = 0;
 	float power = 0;
-	float kP = 190;
-    if(angle < 90) {
-        kP -= 15;
-    }
-    float kI = 6;
-    float kD = fabs(angle) * 150;
+
+	float kP, kD;
 
 	float target = angle + inertial.get_rotation();
+
+    float fang = fabs(angle);
+    //Calculated 10, 30, 50, 90, 100, 130, 150, 170 and guessed based off that
+    if(fang <= 10) {
+        kP = 900;
+        kD = fabs(angle) * 900;
+    }
+    else if(fang <= 20) {
+        kP = 400;
+        kD = fabs(angle) * 800;
+    }
+    else if(fang <= 30) {
+        kP = 550;
+        kD = fabs(angle) * 420;
+    }
+    else if(fang <= 40) {
+        kP = 400;
+        kD = fabs(angle) * 500;
+    }
+    else if(fang <= 50) {
+        kP = 470;
+        kD = fabs(angle) * 482;
+    }
+    else if(fang <= 60) {
+        kP = 570;
+        kD = fabs(angle) * 462;
+    }
+    else if(fang <= 70) {
+        kP = 500;
+        kD = fabs(angle) * 300;
+    }
+    else if(fang <= 80) {
+        kP = 500;
+        kD = fabs(angle) * 335;
+    }
+    else if(fang <= 90) {
+        kP = 500;
+        kD = fabs(angle) * 300;
+    }
+    else if(fang <= 105) {
+        kP = 450;
+        kD = fabs(angle) * 240;
+    }
+    else if(fang <= 120) {
+        kP = 435;
+        kD = fabs(angle) * 200;
+    }
+    else if(fang <= 135) {
+        kP = 340;
+        kD = fabs(angle) * 150;
+    }
+    else if(fang <= 150) {
+        kP = 290;
+        kD = fabs(angle) * 110;
+    }
+    else if(fang <= 165) {
+        kP = 305;
+        kD = fabs(angle) * 115;
+    }
+    else if(fang <= 180) {
+        kP = 305;
+        kD = fabs(angle) * 105;
+    }
+
 	
 	do {
+        totalTime += 10;
 		error = target - inertial.get_rotation();
 		derivative = (error - prevError)/10;
 		prevError = error;
 
-        integral = integral + error;
-
-        if(error > 10) {
-            integral = 0;
-        }
-
-		power = (error * kP) + (derivative*kD) + (integral * kI);
-        // power = (error * kP) + (derivative * kD);
+		// power = (error * kP) + (derivative*kD) + (integral * kI);
+        power = (error * kP) + (derivative * kD);
 
         //Cap
         if(fabs(power) >= 12000) {
@@ -358,6 +416,10 @@ void turn(float angle) {
             break;
         }
         if(largeErr > 500) {
+            controller.rumble("-");
+            break;
+        }
+        if(totalTime > 2000) {
             controller.rumble("-");
             break;
         }
