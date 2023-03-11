@@ -28,7 +28,7 @@ int rpmThreshold = 100;
 bool flyLast = false;
 
 void flySpeed() {
-	float kV = 3.32;
+	float kV = 3.325;
 	float kS = 975;
 	
 	float flyPower = 0;
@@ -38,7 +38,7 @@ void flySpeed() {
 
 	while(true) {
 		if(autonThreshold) {
-			rpmThreshold = 25;
+			rpmThreshold = 20;
 		}
 		else {
 			rpmThreshold = 100;
@@ -55,6 +55,7 @@ void flySpeed() {
 
 		//Note: Multiply by 6 because direct cartridge is 3600 RPM
 		float targetSpeed = getFlywheelRPM();
+		kV = 3.32 + 0.005 * (targetSpeed-2200);
 		float currentSpeed = SMA_Filter(6 * Fly.get_actual_velocity());
 
 		//Calculate error
@@ -100,7 +101,7 @@ void flySpeed() {
 std::queue<double> smaData;
 
 //Number of elements to average and the running sum
-int window = 5;
+int window = 10;
 double windowTotal = 0;
 
 double SMA_Filter(double rawData) {

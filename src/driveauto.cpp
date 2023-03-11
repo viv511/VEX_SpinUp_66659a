@@ -41,7 +41,7 @@ void bucket(int rpmSpeed, int threshold, int timeout, int wait) {
     setFlywheelRPM(rpmSpeed);
 
     int timeSet = 0;
-    pros::delay(50);
+    pros::delay(100);
     while(flyError > threshold) {
         pros::delay(10);
         timeSet+=10;
@@ -81,13 +81,13 @@ void index(int disk) {
     IIR.move_voltage(-12000);
 	controller.rumble(".");
     if(disk == 2) {
-        pros::delay(700);
+        pros::delay(500);
     }
     else if(disk == 1) {
-        pros::delay(140);
+        pros::delay(200);
     }
     else {
-        pros::delay(120);
+        pros::delay(150);
     }
 
 	IIR.move_voltage(0);
@@ -247,56 +247,6 @@ void forwardPD(float inches, double limit) {
     RightDT.brake();
     LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
     RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
-}
-
-void oldDriveArcPD(int leftTicks, int rightTicks, double limit, int dir) {
-    //Reset motor ticks
-    reset_encoder();
-
-    //convert inches --> ticks
-    int leftD = 0;
-    int rightD = 0;
-    int leftError = 0;
-    int rightError = 0;
-    int prevLeftError = 0;
-    int prevRightError = 0;
-    
-    int leftPower = 0;
-    int rightPower = 0;
-
-    //Constants
-    float kP = 25;
-    float kD = 0;
-
-    do {
-        //Calculate error from desired
-        leftError = leftTicks - avg_l();
-        rightError = rightTicks - avg_r();
-
-        //Derivative term on lateral
-        leftD = leftError - prevLeftError;
-        rightD = rightError - prevRightError;
-
-        prevLeftError = leftError;
-        prevRightError = rightError;
-       
-        //Calculate lateral power (Proportional + Derivative)
-        leftPower = (kP * leftError) + (kD * leftD);
-        rightPower = (kP * rightError) + (kD * rightD);
-
-        //Use limit to cap the motor's max output voltage (lateral)
-        if(leftPower >= (12000 * limit)) {
-			leftPower = 12000 * limit;
-		}
-        if(rightPower >= (12000 * limit)) {
-			rightPower = 12000 * limit;
-		}
-
-        LeftDT.move_voltage(leftPower * dir);
-        RightDT.move_voltage(2 * rightPower * dir);
-
-        pros::delay(10);
-    }while((avg_l() < leftTicks) && (avg_r() < rightTicks));
 }
 
 

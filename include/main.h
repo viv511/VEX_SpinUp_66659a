@@ -71,28 +71,13 @@ void disabled(void);
 void competition_initialize(void);
 void opcontrol(void);
 
-// void pivot(double angle);
-
-// void drive(int ticks);
-void DrivePD(double ticks, double limit);
-// void SpecialPD(int leftTicks, int rightTicks, double limit);
-
-// void move_encoder(double ticks, double speed);
-void reset_encoder(void);
-double average_encoders();
-double average_vel();
-double avg_r();
-double avg_l();
-
-void progSkills();
 void regionals();
-void ray();
-void nonRoller();
 void RollerSide();
+void NonRoller();
+void walter();
+void AWP();
 
 void waitShoot(int waitTime);
-
-void backTime(int speed, double sec);
 
 
 #ifdef __cplusplus
