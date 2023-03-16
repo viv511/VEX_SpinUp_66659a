@@ -15,7 +15,7 @@ pros::Motor IIR(12, pros::E_MOTOR_GEARSET_18, true, pros::E_MOTOR_ENCODER_DEGREE
 //controller
 pros::Controller controller(pros::E_CONTROLLER_MASTER);
 //sensor
-pros::IMU inertial(10); //13
+pros::IMU inertial(13); //13
 // pistons
 pros::ADIDigitalOut endgame1('E');
 // pros::ADIDigitalOut endgame2('F');

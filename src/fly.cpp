@@ -101,7 +101,7 @@ void flySpeed() {
 std::queue<double> smaData;
 
 //Number of elements to average and the running sum
-int window = 10;
+int window = 5;
 double windowTotal = 0;
 
 double SMA_Filter(double rawData) {

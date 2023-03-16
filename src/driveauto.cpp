@@ -12,30 +12,6 @@
 
 const double inertialDrift = 1.00446429;
 
-double pdVals[4][3];
-
-void setPIDvalues() {
-    //45 Degrees
-    pdVals[0][0] = 201.5;
-    pdVals[0][1] = 0;
-    pdVals[0][2] = 45;
-
-    //90 Degrees
-    pdVals[1][0] = 201;
-    pdVals[1][1] = 10500;
-    pdVals[1][2] = 90;
-
-    //135 Degrees
-    pdVals[2][0] = 146;
-    pdVals[2][1] = 210;
-    pdVals[2][2] = 135;
-
-    //180
-    pdVals[3][0] = 140;
-    pdVals[3][1] = 220;
-    pdVals[3][2] = 180;
-}
-
 void bucket(int rpmSpeed, int threshold, int timeout, int wait) {
     flyState = true;
     setFlywheelRPM(rpmSpeed);
@@ -81,13 +57,13 @@ void index(int disk) {
     IIR.move_voltage(-12000);
 	controller.rumble(".");
     if(disk == 2) {
-        pros::delay(500);
+        pros::delay(400);
     }
     else if(disk == 1) {
-        pros::delay(200);
+        pros::delay(150);
     }
     else {
-        pros::delay(150);
+        pros::delay(130);
     }
 
 	IIR.move_voltage(0);
@@ -162,16 +138,14 @@ void pivot(double angle) {
 }
 
 void forwardPD(float inches, double limit) {
+    inches *= 0.9;
     int totalTime = 0;
     LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
     RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
 
     absoluteBack = 0;
-    float curInches = 0;
 
-    //1 or -1, forward or backward
-    float latError;
-    int dir = fabs(inches)/inches;
+    float latError = inches;
 
     //save initial heading for angle correction
     float initHeading = inertial.get_rotation();
@@ -184,32 +158,29 @@ void forwardPD(float inches, double limit) {
     int largeError = 0;
 
     //Constants
-    float kP = 800;
+    float kP = 850;
     float kD = fabs(inches) * 900;
     float kP_Theta = 600;
-    //120
 
     do {
         totalTime+=10;
         pros::lcd::print(2, "inertial: %f\n", inertial.get_rotation());
-        // pros::lcd::print(3, "ang: %f\n", angError);
-        curInches = absoluteBack;
 
         //Calculate error from desired
-        latError = fabs(inches - curInches);
+        latError = inches - absoluteBack;
 
         //Derivative term on lateral
         derivative = (latError - prevLatError)/10;
         prevLatError = latError;
         
         //Calculate lateral power (Proportional + Derivative)
-        latPower = dir * ((kP * latError) + (kD * derivative));
+        latPower = ((kP * latError) + (kD * derivative));
 
         //Use limit to cap the motor's max output voltage (lateral)
         if(abs(latPower) >= (12000 * limit)) {
-			if(dir == 1) {
+			if((abs(latPower)/latPower) == 1) {
                 latPower = 12000 * limit;
-            }else if(dir == -1) {
+            }else {
                 latPower = -12000 * limit;
             }
 		}
@@ -230,7 +201,7 @@ void forwardPD(float inches, double limit) {
             controller.rumble(".");
             break;
         }
-        if(totalTime > 4500) {
+        if(totalTime > 3000) {
             controller.rumble("-");
             break;
         }
@@ -247,6 +218,93 @@ void forwardPD(float inches, double limit) {
     RightDT.brake();
     LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
     RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
+    // int totalTime = 0;
+    // LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
+    // RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
+
+    // absoluteBack = 0;
+    // float curInches = 0;
+
+    // //1 or -1, forward or backward
+    // float latError = inches;
+    // int dir = inches/fabs(inches);
+
+    // //save initial heading for angle correction
+    // float initHeading = inertial.get_rotation();
+
+    // float derivative = 0;
+    // float prevLatError = 0;
+    // int latPower = 0;
+
+    // int smallError = 0;
+    // int largeError = 0;
+
+    // //Constants
+    // float kP = 850;
+    // float kD = fabs(inches) * 900;
+    // float kP_Theta = 500;
+
+    // float targetDir = dir;
+
+    // do {
+    //     targetDir = fabs(inches-absoluteBack)/(inches-absoluteBack);
+    //     totalTime+=10;
+    //     pros::lcd::print(2, "inertial: %f\n", inertial.get_rotation());
+    //     // pros::lcd::print(3, "ang: %f\n", angError);
+    //     curInches = absoluteBack;
+
+    //     //Calculate error from desired
+    //     latError = fabs(inches - curInches);
+
+    //     //Derivative term on lateral
+    //     derivative = (latError - prevLatError)/10;
+    //     prevLatError = latError;
+        
+    //     //Calculate lateral power (Proportional + Derivative)
+    //     latPower = dir * ((kP * latError) + (kD * derivative));
+
+    //     //Use limit to cap the motor's max output voltage (lateral)
+    //     if(abs(latPower) >= (12000 * limit)) {
+	// 		if(dir == 1) {
+    //             latPower = 12000 * limit;
+    //         }else if(dir == -1) {
+    //             latPower = -12000 * limit;
+    //         }
+	// 	}
+
+    //     if(fabs(latError) <= 1) {
+    //         smallError+=10;
+    //     }
+    //     if(fabs(latError) <= 3) {
+    //         largeError+=10;
+    //     }
+        
+        
+    //     if(smallError > 100) {
+    //         controller.rumble("-");
+    //         break;
+    //     }
+    //     if(largeError > 500) {
+    //         controller.rumble(".");
+    //         break;
+    //     }
+    //     if(totalTime > 3500) {
+    //         controller.rumble("-");
+    //         break;
+    //     }
+
+    //     LeftDT.move_voltage(targetDir * (latPower + (kP_Theta * (initHeading - inertial.get_rotation()))));
+    //     RightDT.move_voltage(targetDir * (latPower - (kP_Theta * (initHeading - inertial.get_rotation()))));
+
+    //     pros::delay(10);
+    // }while(true);
+
+    // LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
+    // RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
+    // LeftDT.brake();
+    // RightDT.brake();
+    // LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
+    // RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
 }
 
 
@@ -254,14 +312,18 @@ void turn(float angle) {
     int totalTime = 0;
     int smallErr = 0;
     int largeErr = 0;
+
     int dir = fabs(angle)/angle;
+    angle = (int)(fabs(angle)) % 360;
+    angle *= dir;
 
 	float error = 0;
 	float prevError = 0;
 	float derivative = 0;
 	float power = 0;
 
-	float kP, kD;
+	float kP = 0;
+    float kD = 0;
 
 	float target = angle + inertial.get_rotation();
 
@@ -303,6 +365,10 @@ void turn(float angle) {
         kP = 500;
         kD = fabs(angle) * 300;
     }
+    else if(fang <= 95) {
+        kP = 480;
+        kD = fabs(angle) * 290;
+    }
     else if(fang <= 105) {
         kP = 450;
         kD = fabs(angle) * 240;
@@ -323,28 +389,28 @@ void turn(float angle) {
         kP = 305;
         kD = fabs(angle) * 115;
     }
-    else if(fang <= 180) {
+    // else if(fang <= 180) {
+    else {
         kP = 305;
         kD = fabs(angle) * 105;
     }
-
 	
 	do {
+        
         totalTime += 10;
-		error = target - inertial.get_rotation();
+		error = target - inertial.get_rotation();;
 		derivative = (error - prevError)/10;
 		prevError = error;
 
-		// power = (error * kP) + (derivative*kD) + (integral * kI);
         power = (error * kP) + (derivative * kD);
 
         //Cap
-        if(fabs(power) >= 12000) {
+        if(fabs(power) >= 12000 * 0.6) {
             if(dir == 1) {
-                power = 12000;
+                power = 12000 * 0.6;
             } 
             else if(dir == -1) {
-                power = -12000;
+                power = -12000 * 0.6;
             }
         }
 
@@ -361,15 +427,15 @@ void turn(float angle) {
             largeErr+=10;
         }  
 
-        if(smallErr > 100) {
+        if(smallErr > 150) {
             controller.rumble(".");
             break;
         }
-        if(largeErr > 500) {
+        if(largeErr > 400) {
             controller.rumble("-");
             break;
         }
-        if(totalTime > 2000) {
+        if(totalTime > 2500) {
             controller.rumble("-");
             break;
         }
@@ -381,8 +447,8 @@ void turn(float angle) {
     RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
     LeftDT.brake();
     RightDT.brake();
-    LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
-    RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
+    // LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
+    // RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
 }
 
 void rotate(double angle) {
