@@ -1,7 +1,12 @@
 #include "main.h"
+#include "globals.h"
+#include <vector>
 #include "odom.h"
-#include "cmath"
+#include "pros/motors.h"
 #include "variables.h"
+#include "driveauto.h"
+#include "fly.h"
+#include <cmath>
 #include <iostream>
 #include <fstream>
 #include <filesystem>

@@ -1,5 +1,6 @@
 #include "waypoint.h"
 
+
 Waypoint::Waypoint(float xCoord, float yCoord) {
     setWaypoint(xCoord, yCoord);
 }
