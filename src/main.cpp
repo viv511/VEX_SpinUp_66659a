@@ -7,6 +7,9 @@
 #include "pros/misc.h"
 #include "pros/motors.h"
 #include "pros/optical.h"
+#include "waypoint.h"
+#include "purepursuit.h"
+#include "matome.h"
 #include <iostream>
 #include <fstream>
 #include <filesystem>
@@ -231,11 +234,11 @@ void opcontrol() {
 		// *---*---*---*---*---*--FLYWHEEL CONTROLLER--*---*---*---*---*---*---*---*
 		if(flyState == true) {
 			if(speedState) {
-				setFlywheelRPM(2150);
+				setFlywheelRPM(2300);
 				zoom = "-L";
 			}
 			else {
-				setFlywheelRPM(2200);
+				setFlywheelRPM(3200);
 				zoom = "-N";
 			}
 
@@ -256,6 +259,11 @@ void opcontrol() {
 		}
 
 		// *---*---*---*---*---*--DEBUGGING UTILS--*---*---*---*---*---*---*---*
+		// if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
+		// 	exampleFunc();
+		// }
+
+
 		if(!(controllerTime % 5)) {
 			std::string s = "";
 			s = driveState + zoom;
