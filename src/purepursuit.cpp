@@ -21,7 +21,7 @@ void pathFollowPurePursuit(std::vector<Waypoint> pathToFollow) {
     }
 
     newPath.push_back(Waypoint(pathToFollow[pathToFollow.size()-1].getX(), pathToFollow[pathToFollow.size()-1].getY()));
-    //Example (a, b, tolerance) = ((1-0.8), 0.8, 0.001)
+    //Example (a, b, tolerance) = ((1-0.7), 0.3, 0.001) use smoother function
 }
 
 void pathFollowNormal(std::vector<Waypoint> pathToFollow) {
