@@ -68,6 +68,7 @@ void pathFollowPurePursuit(std::vector<Waypoint> pathToFollow) {
     }
     newPath[newPath.size()-1].setCurv(0);
 
+    //Step 5. Calculate Velocities
 
 }
 
