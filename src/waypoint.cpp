@@ -1,15 +1,5 @@
 #include "waypoint.h"
 
-
-Waypoint::Waypoint(float xCoord, float yCoord) {
-    setWaypoint(xCoord, yCoord);
-}
-
-void Waypoint::setWaypoint(float xCoord, float yCoord) {
-    x = xCoord;
-    y = yCoord;
-}
-
 Waypoint scalarMult(Waypoint P, float s) {
     Waypoint Ps = Waypoint(P.getX()*s, P.getY()*s);
     return Ps;

@@ -20,25 +20,64 @@ class Waypoint {
     private:
     float x;
     float y;
+    float distAt;
+    float targetVel;
+    float curvature;
 
     public:
-    Waypoint(float xCoord, float yCoord);
-    void setWaypoint(float xCoord, float yCoord);
+    Waypoint() {
+        x = 0;
+        y = 0;
+        distAt = 0;
+        targetVel = 0;
+        curvature = 0;
+    }
+    Waypoint(float xCoord, float yCoord) {
+        x = xCoord;
+        y = yCoord;
+        distAt = 0;
+        targetVel = 0;
+        curvature = 0;
+    }
 
     float getX() {
         return x;
-    }
-
-    void setX(float newX) {
-        x = newX;
     }
 
     float getY() {
         return y;
     }
 
+    float getDist() {
+        return distAt;
+    }
+
+    float getTarVel() {
+        return targetVel;
+    }
+
+    float getCurv() {
+        return curvature;
+    }
+
+    void setX(float newX) {
+        x = newX;
+    }
+
     void setY(float newY) {
         y = newY;
+    }
+
+    void setDist(float dist) {
+        distAt = dist;
+    }
+
+    void setTarVel(float tvel) {
+        targetVel = tvel;
+    }
+
+    void setCurv(float curv) {
+        curvature = curv;
     }
 };
 
