@@ -3,6 +3,7 @@
 std::vector<Waypoint> path = {{1, 1}, {100, 100}, {300, 50}, {500, 200}};
 
 void pathFollowNormal(std::vector<Waypoint> pathToFollow) {
+
 }
 
 void pathFollowPurePursuit(std::vector<Waypoint> pathToFollow) {
@@ -11,9 +12,8 @@ void pathFollowPurePursuit(std::vector<Waypoint> pathToFollow) {
     //Step 1. Injecting extra points
     int inchSpacing = 6;
     std::vector<Waypoint> newPath;
-
     for(int lineSeg = 0; lineSeg < pathToFollow.size()-1; lineSeg++) {
-        Waypoint dirVector = Waypoint(pathToFollow[lineSeg+1].getX()-pathToFollow[lineSeg].getX(), pathToFollow[lineSeg+1].getY()-pathToFollow[lineSeg].getY());
+        Waypoint dirVector = getDirVector(pathToFollow[lineSeg], pathToFollow[lineSeg+1]); 
         int totalPointsFit = (int) (getLength(dirVector) / inchSpacing);
         dirVector = scalarMult(normalizeVect(dirVector), inchSpacing);
 
@@ -22,8 +22,12 @@ void pathFollowPurePursuit(std::vector<Waypoint> pathToFollow) {
             newPath.push_back(Waypoint(pathToFollow[lineSeg].getX() + scalarMult(dirVector, i).getX(), pathToFollow[lineSeg].getY() + scalarMult(dirVector, i).getY()));
         }
     }
-
     newPath.push_back(Waypoint(pathToFollow[pathToFollow.size()-1].getX(), pathToFollow[pathToFollow.size()-1].getY()));
+
+    float distances[newPath.size()];
+    float curvature[newPath.size()];
+    float velocity[newPath.size()];
+
 
     //Step 2. Smooth Path
     newPath = smooth(newPath, 0.3, 0.7, 0.001);
@@ -31,11 +35,11 @@ void pathFollowPurePursuit(std::vector<Waypoint> pathToFollow) {
     //Step 3. Distance between points
     for(int i=1; i<newPath.size(); i++) {
         //Runing Sum (D_i = D_i-1 + dist(D_i, D_i-1)
-        newPath[i].setDist(newPath[i-1].getDist() + distance(newPath[i], newPath[i-1]));
+        distances[i] = (distances[i-1] + distance(newPath[i], newPath[i-1]));
     }
 
     //Step 4. Calculate curvature (1/radius) between points
-    newPath[0].setCurv(0);
+    curvature[0] = 0;
     for(int i=1; i<(newPath.size()-1); i++) {
         float x1 = newPath[i-1].getX();
         float y1 = newPath[i-1].getY();
@@ -60,13 +64,13 @@ void pathFollowPurePursuit(std::vector<Waypoint> pathToFollow) {
 
         if(std::isnan(c)) {
             //Straight line
-            newPath[i].setCurv(0);
+            curvature[i] = 0;
         }
         else {
-            newPath[i].setCurv(c);
+            curvature[i] = c;
         }
     }
-    newPath[newPath.size()-1].setCurv(0);
+    curvature[newPath.size()-1] = 0;
 
     //Step 5. Calculate Velocities
 
@@ -97,3 +101,55 @@ std::vector<Waypoint> smooth(std::vector<Waypoint> roughPath, float a, float b, 
     return smoothPath;
     //Credit ~Team 2168 FRC/FTC for smoothing algorithm
 }
+
+int closestPoint(Waypoint P, std::vector<Waypoint> path) {
+    //Returns index of closest point in path to point P
+    float smallestDist = 10000000;
+    int smallestIndex = -1;
+
+    float dist = smallestDist;
+    for(int i=0; i<path.size(); i++) {
+        dist = distance(P, path[i]);
+        if(dist < smallestDist) {
+            smallestDist = dist;
+            smallestIndex = i;
+        }
+    }
+
+    return smallestIndex;
+}
+
+float circleLineIntersect(Waypoint start, Waypoint end, Waypoint curPos, float lookaheadRadius) {
+    //Returns t value of intersection between Circle and Line Segment [formed by "start" & "end"] (-1 if none)
+    Waypoint dirVect = getDirVector(start, end);
+    Waypoint centerVect = getDirVector(curPos, start);
+
+    float a = dotProduct(dirVect, dirVect);
+    float b = 2 * dotProduct(centerVect, dirVect);
+    float c = dotProduct(centerVect, centerVect) - lookaheadRadius * lookaheadRadius;
+
+    //Calculate discriminant: b^2-4ac
+    float d = b * b - 4 * a * c;
+
+    if(d >= 0) {
+        d = std::sqrt(d);
+        float t1 = (-b - d) / (2 * a);
+        float t2 = (-b + d) / (2 * a);
+        if(t1 >= 0 && t1 <= 1) {
+            return t1;
+        }
+        else if(t2 >= 0 && t2 <= 1) {
+            return t2;
+        }
+        else {
+            return -1;
+        }
+    }
+    else {
+        return -1;
+    }
+
+
+   //https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm/1084899#1084899
+}
+

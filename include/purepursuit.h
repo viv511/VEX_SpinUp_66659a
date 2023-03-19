@@ -1,24 +1,23 @@
-#include "main.h"
-#include "waypoint.h"
 #include "globals.h"
 #include <vector>
 #include "odom.h"
 #include "pros/motors.h"
-#include "variables.h"
-#include "driveauto.h"
-#include "fly.h"
-#include "cmath"
-#include <iostream>
-#include <fstream>
-#include <filesystem>
+#include "pros/misc.h"
+#include <cmath>
+
+#include "waypoint.h"
 
 #ifndef PUREPURSUIT_H
 #define PUREPURSUIT_H
 
 using namespace pros;
 
+void pathFollowNormal(std::vector<Waypoint> pathToFollow);
+
 void pathFollowPurePursuit(std::vector<Waypoint> pathToFollow);
 std::vector<Waypoint> smooth(std::vector<Waypoint> roughPath, float a, float b, float tolerance);
-void pathFollowNormal(std::vector<Waypoint> pathToFollow);
+int closestPoint(Waypoint P, std::vector<Waypoint> path);
+float circleLineIntersect(Waypoint start, Waypoint end, Waypoint curPos, float lookaheadRadius);
+
 
 #endif

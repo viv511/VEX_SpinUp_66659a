@@ -20,72 +20,95 @@ class Waypoint {
     private:
     float x;
     float y;
-    float distAt;
-    float targetVel;
-    float curvature;
+    float theta;
+    // float distAt;
+    // float targetVel;
+    // float curvature;
 
     public:
     Waypoint() {
-        x = 0;
-        y = 0;
-        distAt = 0;
-        targetVel = 0;
-        curvature = 0;
+        this->x = 0;
+        this->y = 0;
+        this->theta = 0;
+        // distAt = 0;
+        // targetVel = 0;
+        // curvature = 0;
     }
     Waypoint(float xCoord, float yCoord) {
-        x = xCoord;
-        y = yCoord;
-        distAt = 0;
-        targetVel = 0;
-        curvature = 0;
+        this->x = xCoord;
+        this->y = yCoord;
+        this->theta = 0;
+        // distAt = 0;
+        // targetVel = 0;
+        // curvature = 0;
+    }
+    Waypoint(float xCoord, float yCoord, float angleTheta) {
+        this->x = xCoord;
+        this->y = yCoord;
+        this->theta = angleTheta;
+        // distAt = 0;
+        // targetVel = 0;
+        // curvature = 0;
     }
 
     float getX() {
-        return x;
+        return this->x;
     }
 
     float getY() {
-        return y;
+        return this->y;
+    }
+    
+    float getTheta() {
+        return this->theta;
     }
 
-    float getDist() {
-        return distAt;
-    }
+    // float getDist() {
+    //     return distAt;
+    // }
 
-    float getTarVel() {
-        return targetVel;
-    }
+    // float getTarVel() {
+    //     return targetVel;
+    // }
 
-    float getCurv() {
-        return curvature;
-    }
+    // float getCurv() {
+    //     return curvature;
+    // }
 
     void setX(float newX) {
-        x = newX;
+        this->x = newX;
     }
 
     void setY(float newY) {
-        y = newY;
+        this->y = newY;
     }
 
-    void setDist(float dist) {
-        distAt = dist;
+    void setTheta(float newTheta) {
+        this->theta = newTheta;
     }
 
-    void setTarVel(float tvel) {
-        targetVel = tvel;
-    }
+    // void setDist(float dist) {
+    //     distAt = dist;
+    // }
 
-    void setCurv(float curv) {
-        curvature = curv;
-    }
+    // void setTarVel(float tvel) {
+    //     targetVel = tvel;
+    // }
+
+    // void setCurv(float curv) {
+    //     curvature = curv;
+    // }
 };
 
-void debug(Waypoint p);
 float getLength(Waypoint P);
 float distance(Waypoint A, Waypoint B);
+float angle(Waypoint A, Waypoint B);
+float dotProduct(Waypoint A, Waypoint B);
 Waypoint normalizeVect(Waypoint P);
 Waypoint scalarMult(Waypoint P, float s);
+Waypoint getDirVector(Waypoint A, Waypoint B);
 int sign(float num);
+void debug(Waypoint p);
+
 
 #endif
