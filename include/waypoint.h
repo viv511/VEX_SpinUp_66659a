@@ -21,34 +21,22 @@ class Waypoint {
     float x;
     float y;
     float theta;
-    // float distAt;
-    // float targetVel;
-    // float curvature;
 
     public:
     Waypoint() {
         this->x = 0;
         this->y = 0;
         this->theta = 0;
-        // distAt = 0;
-        // targetVel = 0;
-        // curvature = 0;
     }
     Waypoint(float xCoord, float yCoord) {
         this->x = xCoord;
         this->y = yCoord;
         this->theta = 0;
-        // distAt = 0;
-        // targetVel = 0;
-        // curvature = 0;
     }
     Waypoint(float xCoord, float yCoord, float angleTheta) {
         this->x = xCoord;
         this->y = yCoord;
         this->theta = angleTheta;
-        // distAt = 0;
-        // targetVel = 0;
-        // curvature = 0;
     }
 
     float getX() {
@@ -63,18 +51,6 @@ class Waypoint {
         return this->theta;
     }
 
-    // float getDist() {
-    //     return distAt;
-    // }
-
-    // float getTarVel() {
-    //     return targetVel;
-    // }
-
-    // float getCurv() {
-    //     return curvature;
-    // }
-
     void setX(float newX) {
         this->x = newX;
     }
@@ -87,17 +63,6 @@ class Waypoint {
         this->theta = newTheta;
     }
 
-    // void setDist(float dist) {
-    //     distAt = dist;
-    // }
-
-    // void setTarVel(float tvel) {
-    //     targetVel = tvel;
-    // }
-
-    // void setCurv(float curv) {
-    //     curvature = curv;
-    // }
 };
 
 float getLength(Waypoint P);
