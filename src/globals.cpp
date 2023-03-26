@@ -21,4 +21,4 @@ pros::ADIDigitalOut endgame1('E');
 // pros::ADIDigitalOut endgame2('F');
 
 pros::ADIEncoder backEncoder('A', 'B', true);
-// pros::Rotation rightEncoder(10);
+pros::Rotation rightEncoder(10);

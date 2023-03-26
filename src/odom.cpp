@@ -1,8 +1,7 @@
-#include "main.h"
-#include "cmath"
-#include "globals.h"
 #include "odom.h"
-#include "variables.h"
+
+//Using a waypoint object to hold robot's odom calculations
+Waypoint robotPose = Waypoint(0, 0, 0);
 
 //--------------------------// Odometry //--------------------------//
 constexpr float PI = 3.141592;
@@ -26,7 +25,7 @@ constexpr float R_RATIO = (PI * R_DIAMETER)/R_TICKS;
 constexpr float B_RATIO = (PI * B_DIAMETER)/B_TICKS;
 
 // float rightCurrent = 0;
-	float backCurrent = 0;
+float backCurrent = 0;
 // float rightLast = 0;
 float backLast = 0;
 // float rightChange = 0;
@@ -34,8 +33,8 @@ float backChange = 0;
 
 // float absoluteRight = 0;
 
-// float prevTheta = curTheta;
-// float deltaTheta;
+float prevTheta = curTheta;
+float deltaTheta;
 
 // float x_local = 0;
 // float y_local = 0;
@@ -91,34 +90,21 @@ void odometry() {
 
 		// x_global += (cos(offset) * y_local - sin(offset) * x_local);
 		// y_global += (cos(offset) * x_local - sin(offset) * y_local);
+		robotPose.setX(x_global);
+		robotPose.setY(y_global);
+		robotPose.setTheta(inertial.get_rotation());
 		
 		pros::delay(10);
 	}
 }
 
-void setResetPoint(float xCoord, float yCoord, float newTheta) {
-	x_global = xCoord;
-	y_global = yCoord;
-	curTheta = newTheta * degreesToRadians;
+void setRobotPose(Waypoint newRobotPose) {
+	// robotPose.setX(newRobotPose.getX());
+	// robotPose.setY(newRobotPose.getY());
+	// robotPose.setTheta(newRobotPose.getTheta());
+	robotPose = newRobotPose;
 }
 
-float distError(float xCoord, float yCoord) {
-	return sqrt((xCoord-x_global)*(xCoord-x_global) + (yCoord-y_global)*(yCoord-y_global));
-}
-
-float angleError(float xCoord, float yCoord, bool inRad) {
-	if(inRad) {
-		return atan2(xCoord-x_global, yCoord-y_global);
-	}
-	else {
-		return atan2(xCoord-x_global, yCoord-y_global) * radiansToDegrees;
-	}
-}
-
-float findLineSlope(float sX, float sY, float eX, float eY) {
-	return ((eY - sY)/(eX - sX));
-}
-
-float findLineYIntercept(float slope, float pX, float pY) {
-	return pY - slope * pX;
+Waypoint getRobotPose() {
+	return robotPose;
 }

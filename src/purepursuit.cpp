@@ -6,7 +6,13 @@ void pathFollowNormal(std::vector<Waypoint> pathToFollow) {
 
 }
 
-void pathFollowPurePursuit(std::vector<Waypoint> pathToFollow) {
+void pathFollowPurePursuit(std::vector<Waypoint> pathToFollow, float maximumVel, float maximumA, float constantK) {
+    std::vector<Waypoint> path = pathGen(pathToFollow, maximumVel, maximumA, constantK);
+
+
+}
+
+std::vector<Waypoint> pathGen(std::vector<Waypoint> pathToFollow, float maxVel, float maxA, float velocityK) {
     //Following DAWGMA Document
 
     //Step 1. Injecting extra points
@@ -24,22 +30,18 @@ void pathFollowPurePursuit(std::vector<Waypoint> pathToFollow) {
     }
     newPath.push_back(Waypoint(pathToFollow[pathToFollow.size()-1].getX(), pathToFollow[pathToFollow.size()-1].getY()));
 
-    float distances[newPath.size()];
-    float curvature[newPath.size()];
-    float velocity[newPath.size()];
-
-
     //Step 2. Smooth Path
     newPath = smooth(newPath, 0.3, 0.7, 0.001);
 
     //Step 3. Distance between points
+    newPath[0].setDist(0);
     for(int i=1; i<newPath.size(); i++) {
         //Runing Sum (D_i = D_i-1 + dist(D_i, D_i-1)
-        distances[i] = (distances[i-1] + distance(newPath[i], newPath[i-1]));
+        newPath[i].setDist((newPath[i-1].getDist() + distance(newPath[i], newPath[i-1])));
     }
 
     //Step 4. Calculate curvature (1/radius) between points
-    curvature[0] = 0;
+    newPath[0].setCurv(0);
     for(int i=1; i<(newPath.size()-1); i++) {
         float x1 = newPath[i-1].getX();
         float y1 = newPath[i-1].getY();
@@ -64,16 +66,29 @@ void pathFollowPurePursuit(std::vector<Waypoint> pathToFollow) {
 
         if(std::isnan(c)) {
             //Straight line
-            curvature[i] = 0;
+            newPath[i].setCurv(0);
         }
         else {
-            curvature[i] = c;
+            newPath[i].setCurv(c);
         }
     }
-    curvature[newPath.size()-1] = 0;
+    newPath[newPath.size()-1].setCurv(0);
 
-    //Step 5. Calculate Velocities
+    //Step 5a. Calculate Velocities
+    for(int i=0; i<newPath.size(); i++) {
+        if(newPath.getCurv() == 0) {
+            newPath[i].setVel(maxVel);
+        }
+        else {
+            newPath[i].setVel(std::min(velocityK/(newPath[i].getCurv()), maxVel));
+        }
+    }
 
+    //Step 5b.
+    
+    //p a i n
+
+    return newPath;
 }
 
 std::vector<Waypoint> smooth(std::vector<Waypoint> roughPath, float a, float b, float tolerance) {
@@ -102,7 +117,7 @@ std::vector<Waypoint> smooth(std::vector<Waypoint> roughPath, float a, float b, 
     //Credit ~Team 2168 FRC/FTC for smoothing algorithm
 }
 
-int closestPoint(Waypoint P, std::vector<Waypoint> path) {
+int findClosestPoint(Waypoint P, std::vector<Waypoint> path) {
     //Returns index of closest point in path to point P
     float smallestDist = 10000000;
     int smallestIndex = -1;
@@ -153,3 +168,25 @@ float circleLineIntersect(Waypoint start, Waypoint end, Waypoint curPos, float l
    //https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm/1084899#1084899
 }
 
+Waypoint findLookaheadPoint(std::vector<Waypoint> pathToFollow, Waypoint curPos, Waypoint prevLookAhead, int prevLookAheadIndex, float lookaheadRadius) {
+    Waypoint curLookAhead = prevLookAhead;
+
+    float t;
+    float fracIndex;
+
+    for(int i=0; i<pathToFollow.size()-1; i++) {
+        t = circleLineIntersect(pathToFollow[i], pathToFollow[i+1], curPos, lookAheadRadius);
+        
+        //If valid point
+        if((t >= 0) && (t <= 1)) {
+            //TODO: Optimize by starting at last lookahead point index
+            
+            fracIndex = i + t;
+            if(fracIndex > prevLookAheadIndex) {
+                curLookAhead = Waypoint(pathToFollow[i].getX() + t * (pathToFollow[i+1].getX() - pathToFollow[i].getX()), pathToFollow[i].getY() + t * (pathToFollow[i+1].getY() - pathToFollow[i].getY()));
+            }
+        }
+    }
+
+    return curLookAhead;
+}

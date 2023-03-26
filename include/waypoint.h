@@ -18,51 +18,80 @@ using namespace pros;
 
 class Waypoint {
     private:
-    float x;
-    float y;
-    float theta;
+        float x;
+        float y;
+        float theta;
+        float dist;
+        float vel;
+        float curv;
 
     public:
-    Waypoint() {
-        this->x = 0;
-        this->y = 0;
-        this->theta = 0;
-    }
-    Waypoint(float xCoord, float yCoord) {
-        this->x = xCoord;
-        this->y = yCoord;
-        this->theta = 0;
-    }
-    Waypoint(float xCoord, float yCoord, float angleTheta) {
-        this->x = xCoord;
-        this->y = yCoord;
-        this->theta = angleTheta;
-    }
+        Waypoint(float xCoord, float yCoord) {
+            this->x = xCoord;
+            this->y = yCoord;
+            this->theta = 0;
+            this->dist = 0;
+            this->vel = 0;
+            this->curv = 0;
+        }
+        Waypoint(float xCoord, float yCoord, float angleTheta) {
+            this->x = xCoord;
+            this->y = yCoord;
+            this->theta = angleTheta;
+            this->dist = 0;
+            this->vel = 0;
+            this->curv = 0;
+        }
 
-    float getX() {
-        return this->x;
-    }
+        //Getters
+        float getX() {
+            return this->x;
+        }
 
-    float getY() {
-        return this->y;
-    }
-    
-    float getTheta() {
-        return this->theta;
-    }
+        float getY() {
+            return this->y;
+        }
+        
+        float getTheta() {
+            return this->theta;
+        }
 
-    void setX(float newX) {
-        this->x = newX;
-    }
+        float getDist() {
+            return this->dist;
+        }
 
-    void setY(float newY) {
-        this->y = newY;
-    }
+        float getVel() {
+            return this->vel;
+        }
 
-    void setTheta(float newTheta) {
-        this->theta = newTheta;
-    }
+        float getCurv() {
+            return this->curv;
+        }
 
+        //Setters
+        void setX(float newX) {
+            this->x = newX;
+        }
+
+        void setY(float newY) {
+            this->y = newY;
+        }
+
+        void setTheta(float newTheta) {
+            this->theta = newTheta;
+        }
+
+        void setDist(float newDist) {
+            this->dist = newDist;
+        }
+
+        void setVel(float newVel) {
+            this->vel = newVel;
+        }
+
+        void setCurv(float newCurv) {
+            this->curv = newCurv;
+        }
 };
 
 float getLength(Waypoint P);
