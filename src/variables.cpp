@@ -13,5 +13,4 @@ bool flyState = false;
 
 bool autonThreshold = false;
 
-float flyError = 0;
 float absoluteBack = 0;

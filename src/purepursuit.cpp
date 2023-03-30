@@ -85,14 +85,13 @@ std::vector<Waypoint> pathGen(std::vector<Waypoint> pathToFollow, float maxVel, 
     }
 
     //Step 5b & c
-    float maxA = 0;
     newPath.setVel(0);
     for(int i=newPath.size()-1; i>0; i--) {
-        float dist = getLength(getDirVector(newPath[i], newPath[i-1]));
+        float dist = distance(newPath[i], newPath[i-1]);
         float newVel = std::sqrt(pow(newPath[i].getVel(), 2) + 2 * maxA * dist);
         newPath[i].setVel(std::min(newPath[i-1].getVel(), newVel));
     }
-    
+
 
     return newPath;
 }

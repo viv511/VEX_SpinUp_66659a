@@ -9,6 +9,9 @@
 pros::Mutex rpmMutex;
 double target_rpm = 0;
 
+pros::Mutex rpmReady;
+bool flywheel_ready = false;
+
 void setFlywheelRPM(double targetRPM) {
     rpmMutex.take();
     target_rpm = targetRPM;
@@ -16,12 +19,27 @@ void setFlywheelRPM(double targetRPM) {
 }
 
 double getFlywheelRPM() {
-    double tRPM;
+    double tempRPM;
     rpmMutex.take();
-    tRPM = target_rpm;
+    tempRPM = target_rpm;
     rpmMutex.give();
-    return tRPM;
+    return tempRPM;
 }
+
+void setReadyState(bool flywheelState) {
+	rpmReady.take();
+	flywheel_ready = flywheelState;
+	rpmReady.give();
+}
+
+bool getReadyState() {
+	double tempState;
+	rpmReady.take();
+	tempState = flywheel_ready;
+	rpmReady.give();
+	return tempState;
+}
+
 
 //--------------------------// FlyWheel //--------------------------//	
 int rpmThreshold = 100;
@@ -32,6 +50,7 @@ void flySpeed() {
 	float kS = 975;
 	
 	float flyPower = 0;
+	flaot flyError = 0;
 
 	//CRUCIAL!!
 	Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
@@ -69,13 +88,16 @@ void flySpeed() {
 			//Bang-Bang
 			if(flyError > rpmThreshold){
 				flyPower = 12000;
+				setReadyState(false);
 			}
 			else if(flyError < -rpmThreshold) {
 				flyPower = 0;
+				setReadyState(false);
 			}
 			else {	
 				//Feedforward in y=mx+b form
 				flyPower = (kV * targetSpeed) + kS;
+				setReadyState(true);
 			}
 
 		}
