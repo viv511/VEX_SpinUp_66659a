@@ -50,7 +50,7 @@ void flySpeed() {
 	float kS = 975;
 	
 	float flyPower = 0;
-	flaot flyError = 0;
+	float flyError = 0;
 
 	//CRUCIAL!!
 	Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
