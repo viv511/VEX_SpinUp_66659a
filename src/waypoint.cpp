@@ -1,35 +1,35 @@
 #include "waypoint.h"
 
-Waypoint scalarMult(Waypoint P, float s) {
+Waypoint Waypoint::scalarMult(Waypoint P, float s) {
     Waypoint Ps = Waypoint(P.getX()*s, P.getY()*s);
     return Ps;
 }
 
-float distance(Waypoint A, Waypoint B) {
+float Waypoint::distance(Waypoint A, Waypoint B) {
     Waypoint originVec = Waypoint(B.getX()-A.getX(), B.getY()-A.getY());
     return getLength(originVec);
 }
 
-float angle(Waypoint A, Waypoint B) {
+float Waypoint::angle(Waypoint A, Waypoint B) {
     return std::atan2(B.getY() - A.getY(), B.getX() - A.getX());
 }
 
-Waypoint normalizeVect(Waypoint P) {
+Waypoint Waypoint::normalizeVect(Waypoint P) {
     float len = getLength(P);
     Waypoint U = Waypoint(P.getX()/len, P.getY()/len);
     return U;
 }
 
-Waypoint getDirVector(Waypoint A, Waypoint B) {
+Waypoint Waypoint::getDirVector(Waypoint A, Waypoint B) {
     return Waypoint(B.getX()-A.getX(), B.getY()-A.getY());
 }
 
-float dotProduct(Waypoint A, Waypoint B) {
+float Waypoint::dotProduct(Waypoint A, Waypoint B) {
     float Dot = A.getX() * B.getX() + A.getY() * B.getY();
     return Dot;
 }
 
-float getLength(Waypoint P) {
+float Waypoint::getLength(Waypoint P) {
     float pointX = P.getX();
     float pointY = P.getY();
     if(!((pointX == 0) && (pointY == 0))) {
@@ -40,7 +40,7 @@ float getLength(Waypoint P) {
     }
 }
 
-int sign(float num) {
+int Waypoint::sign(float num) {
     if(num > 0.0) {
         return 1;
     }
@@ -52,6 +52,6 @@ int sign(float num) {
     }
 }
 
-void debug(Waypoint p) {
+void Waypoint::debug(Waypoint p) {
     std::cout << p.getX() << "\t" << p.getY() << "\t" << p.getTheta() << "\n";
 }
