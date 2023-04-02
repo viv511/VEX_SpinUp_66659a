@@ -33,3 +33,30 @@ float PID::calculateOutput(float current) {
 
     return output;
 }
+
+bool PID::isSettled() {
+    if(fabs(error) < smallErr) {
+        smallTimeCounter += 10;
+        if(smallTimeCounter > smallExit) {
+            //In target small threshold for smallExit amount of time
+            return true;
+        }
+    }
+    else if(fabs(error) < largeExit) {
+        largeTimeCounter += 10;
+        if(largeTimeCounter > largeExit) {
+            //In target large threshold for largeExit amount of time
+            return true;
+        }
+    }
+
+    //add to maxtime counter
+    maxCounter += 10;
+    if(maxCounter > maxTime) {
+        //took too long
+        return true;
+    }
+
+    //else it hasnt reached yet
+    return false;
+}
