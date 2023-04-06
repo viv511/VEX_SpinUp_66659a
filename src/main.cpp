@@ -234,11 +234,11 @@ void opcontrol() {
 		// *---*---*---*---*---*--FLYWHEEL CONTROLLER--*---*---*---*---*---*---*---*
 		if(flyState == true) {
 			if(speedState) {
-				setFlywheelRPM(2300);
+				setFlywheelRPM(3000);
 				zoom = "-L";
 			}
 			else {
-				setFlywheelRPM(3200);
+				setFlywheelRPM(2400);
 				zoom = "-N";
 			}
 

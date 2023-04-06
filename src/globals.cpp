@@ -20,5 +20,5 @@ pros::IMU inertial(13); //13
 pros::ADIDigitalOut endgame1('E');
 // pros::ADIDigitalOut endgame2('F');
 
-pros::ADIEncoder backEncoder('A', 'B', true);
+pros::Rotation backEncoder(3);
 pros::Rotation rightEncoder(10);

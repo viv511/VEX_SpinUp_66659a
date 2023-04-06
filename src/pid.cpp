@@ -2,7 +2,8 @@
 #include "waypoint.h"
 
 constexpr float INTEGRAL_TURN_THRESHOLD = 3; 
-constexpr float INTEGRAL_DRIVE_THRESHOLD = -1; 
+constexpr float INTEGRAL_DRIVE_THRESHOLD = -1;
+const int PID_DELAY_TIME = 10; 
 
 float PID::calculateOutput(float current) {
     error = target - current;
@@ -36,14 +37,14 @@ float PID::calculateOutput(float current) {
 
 bool PID::isSettled() {
     if(fabs(error) < smallErr) {
-        smallTimeCounter += 10;
+        smallTimeCounter += PID_DELAY_TIME;
         if(smallTimeCounter > smallExit) {
             //In target small threshold for smallExit amount of time
             return true;
         }
     }
-    else if(fabs(error) < largeExit) {
-        largeTimeCounter += 10;
+    else if(fabs(error) < largeErr) {
+        largeTimeCounter += PID_DELAY_TIME;
         if(largeTimeCounter > largeExit) {
             //In target large threshold for largeExit amount of time
             return true;
@@ -51,7 +52,7 @@ bool PID::isSettled() {
     }
 
     //add to maxtime counter
-    maxCounter += 10;
+    maxCounter += PID_DELAY_TIME;
     if(maxCounter > maxTime) {
         //took too long
         return true;

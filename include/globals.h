@@ -23,8 +23,8 @@ extern pros::Controller controller;
 
 extern pros::IMU inertial; 
 
-extern pros::ADIEncoder backEncoder;
-// extern pros::Rotation rightEncoder;
+extern pros::Rotation backEncoder;
+extern pros::Rotation rightEncoder;
 
 // //pistons
 extern pros::ADIDigitalOut endgame1;
