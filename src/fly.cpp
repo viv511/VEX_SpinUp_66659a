@@ -1,5 +1,5 @@
 #include "main.h"
-#include "cmath"
+#include <cmath>
 #include "globals.h"
 #include "variables.h"
 #include <queue>
@@ -45,6 +45,9 @@ bool getReadyState() {
 int rpmThreshold = 100;
 bool flyLast = false;
 
+const double emaAlpha = 2/(1.0+window);
+double emaLast = 0;
+
 void flySpeed() {
 	float kV = 3.325;
 	float kS = 975;
@@ -56,13 +59,6 @@ void flySpeed() {
 	Fly.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 
 	while(true) {
-		if(autonThreshold) {
-			rpmThreshold = 20;
-		}
-		else {
-			rpmThreshold = 100;
-		}
-
 		//Toggle Logic
 		if((controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2)) && !flyLast) {
 			flyState = !flyState;
@@ -74,8 +70,7 @@ void flySpeed() {
 
 		//Note: Multiply by 6 because direct cartridge is 3600 RPM
 		float targetSpeed = getFlywheelRPM();
-		kV = 3.32 + 0.005 * (targetSpeed-2200);
-		float currentSpeed = SMA_Filter(6 * Fly.get_actual_velocity());
+		float currentSpeed = EMA_Filter(SMA_Filter(6 * Fly.get_actual_velocity()));
 
 		//Calculate error
 		flyError = targetSpeed - currentSpeed;
@@ -111,9 +106,13 @@ void flySpeed() {
 		}
 
 		Fly.move_voltage(flyPower);
+		if(getReadyState) {
+			controller.rumble(".");
+		}
 
 		//Debugging Utils
 		pros::lcd::print(5, "Fly: %f\n", currentSpeed);
+		std::cout << flyPower << "\n";
 		pros::lcd::print(6, "power: %f\n", flyPower);
 		pros::delay(10);
 	}
@@ -123,7 +122,7 @@ void flySpeed() {
 std::queue<double> smaData;
 
 //Number of elements to average and the running sum
-int window = 5;
+int window = 10;
 double windowTotal = 0;
 
 double SMA_Filter(double rawData) {
@@ -142,4 +141,10 @@ double SMA_Filter(double rawData) {
 	//Apply average
 	double smoothedData = (windowTotal / smaData.size());
 	return smoothedData;
+}
+
+double EMA_Filter(double smaData) {
+	//Store last ema value in "emaLast", update and return
+	emaLast = (smaData * emaAlpha) + emaLast * (1 - emaAlpha);
+	return emaLast;
 }

@@ -242,9 +242,6 @@ void opcontrol() {
 				zoom = "-N";
 			}
 
-			if(flyError < 20) {
-				controller.rumble(".");
-			}
 		}
 		else {
 			setFlywheelRPM(0);

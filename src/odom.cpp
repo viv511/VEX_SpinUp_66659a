@@ -10,11 +10,11 @@ constexpr float radiansToDegrees = 180/PI;
 
 //Distance from center
 constexpr float R_DIST = 0.75;
-constexpr float B_DIST = 6.25;
+constexpr float B_DIST = 11.6;
 
 //Diameter of wheels
 constexpr float R_DIAMETER = 2.83;
-constexpr float B_DIAMETER = 2.8;
+constexpr float B_DIAMETER = 2.83;
 
 //Ticks per rotation
 constexpr float R_TICKS = 36000.0;

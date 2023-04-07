@@ -20,5 +20,6 @@ void setReadyState(bool flywheelState);
 
 
 double SMA_Filter(double rawData);
+double EMA_Filter(double smaData);
 
 #endif
