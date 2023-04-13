@@ -1,10 +1,10 @@
 #include "odom.h"
-#include "utilities.h"
 
 //Using a waypoint object to hold robot's odom calculations
 Waypoint robotPose = Waypoint(0, 0, 0);
 
 //--------------------------// Odometry //--------------------------//
+constexpr float PI = 3.141592;
 constexpr float degreesToRadians = PI/180;
 constexpr float radiansToDegrees = 180/PI;
 
