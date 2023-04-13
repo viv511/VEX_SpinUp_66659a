@@ -11,7 +11,11 @@ float Waypoint::distance(Waypoint A, Waypoint B) {
 }
 
 float Waypoint::angle(Waypoint A, Waypoint B) {
-    return std::atan2(B.getY() - A.getY(), B.getX() - A.getX());
+    float dTheta = std::atan2(B.getY() - A.getY(), B.getX() - A.getX());
+    if(dTheta < 0) {
+        dTheta += 360;
+    }
+    return dTheta;
 }
 
 Waypoint Waypoint::normalizeVect(Waypoint P) {
