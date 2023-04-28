@@ -1,14 +1,19 @@
 #include "main.h"
+#include "odom.h"
+// #include "waypoint.h"-
 
-#pragma once
+// #pragma once
 #ifndef PID_H
 #define PID_H
 
 using namespace pros;
 
+constexpr float INTEGRAL_TURN_THRESHOLD = 3; 
+constexpr float INTEGRAL_DRIVE_THRESHOLD = -1;
+const int PID_DELAY_TIME = 10; 
 
 class PID {
-    private:
+    public:
         //care mostly about target
         float target;
 
@@ -78,10 +83,6 @@ class PID {
             this->constants[0] = p;
             this->constants[1] = i;
             this->constants[2] = d;
-
-            this->smallTimeCounter = 0;
-            this->largeTimeCounter = 0;
-            this->maxTime = 0;
         }
 
         float getTarget() {
@@ -90,6 +91,9 @@ class PID {
 
         void setTarget(float t) {
             this->target = t;
+            this->smallTimeCounter = 0;
+            this->largeTimeCounter = 0;
+            this->maxCounter = 0;
         }
 
         void setType(bool turn) {
@@ -104,8 +108,72 @@ class PID {
             this->maxTime = maxOut;
         }
 
-    float calculateOutput(float current);
-    bool isSettled();
+        float calculateOutput(float current) {
+            error = target - current;
+            derivative = error - previousError;
+
+            if(constants[1] == 0) {
+                integral = 0;
+            }
+            else {
+                if(isTurn) {
+                    if(fabs(error) < INTEGRAL_TURN_THRESHOLD) {
+                        integral = integral + error;
+                    }
+                }
+                else {
+                    if(fabs(error) < INTEGRAL_DRIVE_THRESHOLD) {
+                        integral = integral + error;
+                    }
+                }
+
+                if(numbersign(error) != numbersign(previousError)) {
+                    integral = 0;
+                }
+            }
+
+            output = constants[0]*error + constants[1]*integral + constants[2]*derivative;
+            previousError = error;
+
+            updateTimers();
+
+            return output;
+        }
+
+        void updateTimers() {
+            if(fabs(error) < smallErr) {
+                smallTimeCounter += PID_DELAY_TIME;
+            }
+            else if(fabs(error) < largeErr) {
+                largeTimeCounter += PID_DELAY_TIME;
+            }
+
+            maxCounter += PID_DELAY_TIME;
+        }
+
+        bool isSettled() {
+            if(smallTimeCounter > smallExit) {
+                //In target small threshold for smallExit amount of time
+                pros::lcd::print(6, "diff: %f\n", error);
+                pros::lcd::print(5, "Exit: %s\n", "SMALL");
+                return true;
+            }
+            else if(largeTimeCounter > largeExit) {
+                //In target large threshold for largeExit amount of time
+                pros::lcd::print(6, "diff: %f\n", error);
+                pros::lcd::print(5, "Exit: %s\n", "LARGE");
+                return true;
+            }
+            else if(maxCounter > maxTime) {
+                //took too long
+                pros::lcd::print(6, "diff: %f\n", error);
+                pros::lcd::print(5, "Exit: %s\n", "MAX");
+                return true; 
+            }
+
+            //else it hasnt reached yet
+            return false;
+        }
 
 };
 

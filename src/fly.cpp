@@ -1,8 +1,3 @@
-#include "main.h"
-#include <cmath>
-#include "globals.h"
-#include "variables.h"
-#include <queue>
 #include "fly.h"
 
 //--------------------------// Mutex Management //--------------------------//	
@@ -42,15 +37,20 @@ bool getReadyState() {
 
 
 //--------------------------// FlyWheel //--------------------------//	
-int rpmThreshold = 100;
+int rpmThreshold = 20;
+bool flyState = false;
 bool flyLast = false;
 
-const double emaAlpha = 2/(1.0+window);
-double emaLast = 0;
+bool getToggle() {
+	return flyState;
+}
+void setToggle(bool e) {
+	flyState = e;
+}
 
 void flySpeed() {
-	float kV = 3.325;
-	float kS = 975;
+	float kV = 3.4;
+	float kS = 600;
 	
 	float flyPower = 0;
 	float flyError = 0;
@@ -70,7 +70,8 @@ void flySpeed() {
 
 		//Note: Multiply by 6 because direct cartridge is 3600 RPM
 		float targetSpeed = getFlywheelRPM();
-		float currentSpeed = EMA_Filter(SMA_Filter(6 * Fly.get_actual_velocity()));
+		float currentSpeed = SMA_Filter(6 * Fly.get_actual_velocity());
+		// float currentSpeed = EMA_Filter(SMA_Filter(6 * Fly.get_actual_velocity()));
 
 		//Calculate error
 		flyError = targetSpeed - currentSpeed;
@@ -94,7 +95,6 @@ void flySpeed() {
 				flyPower = (kV * targetSpeed) + kS;
 				setReadyState(true);
 			}
-
 		}
 		
 		//Voltage Caps
@@ -104,16 +104,19 @@ void flySpeed() {
 		if(flyPower > 12000) {
 			flyPower = 12000;
 		}
-
+		
+		if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_A)) {
+			flyPower = -12000;
+		}
 		Fly.move_voltage(flyPower);
-		if(getReadyState) {
+		if((targetSpeed != 0) && (fabs(flyError) < 50)) {
 			controller.rumble(".");
 		}
 
 		//Debugging Utils
-		pros::lcd::print(5, "Fly: %f\n", currentSpeed);
-		std::cout << flyPower << "\n";
-		pros::lcd::print(6, "power: %f\n", flyPower);
+		pros::lcd::print(7, "Fly: %.2f\n", currentSpeed);
+		std::cout << pros::millis() << "," << currentSpeed << "\n";
+		// pros::lcd::print(6, "power: %f\n", flyPower);
 		pros::delay(10);
 	}
 }
@@ -122,8 +125,12 @@ void flySpeed() {
 std::queue<double> smaData;
 
 //Number of elements to average and the running sum
-int window = 10;
+int window = 5;
 double windowTotal = 0;
+
+//EMA stuff
+const double emaAlpha = 2/(1.0+window);
+double emaLast = 0;
 
 double SMA_Filter(double rawData) {
 	//Add to the running sum

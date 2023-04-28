@@ -2,25 +2,22 @@
 #include "cmath"
 #include "globals.h"
 #include "odom.h"
-#include "variables.h"
 
 #ifndef DRIVEAUTO_H
 #define DRIVEAUTO_H
 
 using namespace pros;
 
-void shoot(int num_disks, int rpmSpeed, int timeout, int threshold, int waitMsec);
-void bucket(int rpmSpeed, int threshold, int timeout, int wait);
-void index(int disk);
-
+void shoot(float rpm);
+void move(float dist, float limit);
 void pivot(double angle);
 void turn(float angle);
-void setPIDvalues();
+void swing(float angle, bool leftSwing, float otherPower);
 
-void forwardPD(float inches, double limit);
+float lim(float input, float limitPCT);
+void powerMV(float l, float r);
+void brake();
+void setHold();
+void setCoast();
 
-void oldDriveArcPD(int leftTicks, int rightTicks, double limit, int dir);
-
-void negative(double angle, float p, float d);
-void rotate(double angle);
 #endif

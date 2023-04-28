@@ -6,6 +6,22 @@ void pathFollowNormal(std::vector<Waypoint> pathToFollow) {
 
 }
 
+void chasePoint(Waypoint P) {
+    //20, 1
+    //100 -> 12000 = (x120)
+    float kP_linear = 240;
+    float kP_angular = 24;
+
+    do {
+        float linErr = distance(getRobotPose(), P);
+        float angErr = angle(getRobotPose(), P);
+
+        LeftDT.move_voltage(0.7*(linErr * kP_linear - angErr * kP_angular));
+        RightDT.move_voltage(0.7*(linErr * kP_linear + angErr * kP_angular));
+    }while(!robotSettled(P));
+    controller.rumble("..");
+}
+
 void pathFollowPurePursuit(std::vector<Waypoint> pathToFollow, float maximumVel, float maximumA, float constantK) {
     std::vector<Waypoint> path = pathGen(pathToFollow, maximumVel, maximumA, constantK);
 
@@ -76,7 +92,7 @@ std::vector<Waypoint> pathGen(std::vector<Waypoint> pathToFollow, float maxVel, 
 
     //Step 5a. Calculate Velocities
     for(int i=0; i<newPath.size(); i++) {
-        if(newPath.getCurv() == 0) {
+        if(newPath[i].getCurv() == 0) {
             newPath[i].setVel(maxVel);
         }
         else {
@@ -85,7 +101,7 @@ std::vector<Waypoint> pathGen(std::vector<Waypoint> pathToFollow, float maxVel, 
     }
 
     //Step 5b & c
-    newPath.setVel(0);
+    newPath[newPath.size()-1].setVel(0);
     for(int i=newPath.size()-1; i>0; i--) {
         float dist = distance(newPath[i], newPath[i-1]);
         float newVel = std::sqrt(pow(newPath[i].getVel(), 2) + 2 * maxA * dist);
@@ -180,7 +196,7 @@ Waypoint findLookaheadPoint(std::vector<Waypoint> pathToFollow, Waypoint curPos,
     float fracIndex;
 
     for(int i=0; i<pathToFollow.size()-1; i++) {
-        t = circleLineIntersect(pathToFollow[i], pathToFollow[i+1], curPos, lookAheadRadius);
+        t = circleLineIntersect(pathToFollow[i], pathToFollow[i+1], curPos, lookaheadRadius);
         
         //If valid point
         if((t >= 0) && (t <= 1)) {
@@ -194,4 +210,23 @@ Waypoint findLookaheadPoint(std::vector<Waypoint> pathToFollow, Waypoint curPos,
     }
 
     return curLookAhead;
+}
+
+float getSignedCurvature(Waypoint curPos, Waypoint lookAhead, float orientation) {
+    //Signed Curvature = curvature * side
+
+    //Curvature = 2x/L^2 (use DAWGMA document)
+    float a = -std::tan(curPos.getTheta());
+    float b = 1;
+    float c = std::tan(curPos.getTheta()) * curPos.getX() - curPos.getY();
+    float L = std::hypot(lookAhead.getX()-curPos.getX(), lookAhead.getY()-curPos.getY());
+
+    //x = |ax+by+c| / sqrt(a^2+b^2), b = 1
+    //x = |ax + y + c| / sqrt(a^2 + 1)
+    float x = std::fabs(a * lookAhead.getX() + lookAhead.getY() + c) / std::sqrt(pow(a, 2) + 1);
+    float curvature = ((2 * x) / pow(L, 2));
+
+    float side = numbersign(std::sin(curPos.getTheta()) * (lookAhead.getX()-curPos.getX()) - std::cos(curPos.getTheta()) * (lookAhead.getY()-curPos.getY()));
+
+    return curvature * side;
 }

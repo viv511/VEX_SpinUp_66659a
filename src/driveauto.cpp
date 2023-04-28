@@ -1,72 +1,66 @@
-#include "main.h"
-#include "cmath"
-#include "globals.h"
-#include "odom.h"
 #include "pros/motors.h"
-#include "variables.h"
 #include "driveauto.h"
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include "pid.h"
+#include "odom.h"
 #include "fly.h"
 
-const double inertialDrift = 1.00446429;
+float lin_kP = 850;
+float lin_kD = 100;
+float theta_kP = 400;
 
-void bucket(int rpmSpeed, int threshold, int timeout, int wait) {
-    flyState = true;
-    setFlywheelRPM(rpmSpeed);
+PID linMovement = PID(lin_kP, lin_kD, false, 1, 100, 3, 500, 3000);
+PID angTurn = PID(200, 0, true, 1, 100, 3, 500, 3000);
 
-    int timeSet = 0;
-    pros::delay(100);
-    while(flyError > threshold) {
+void shoot(float rpm) {
+    setFlywheelRPM(rpm);
+    int counter = 0;
+    while(!getReadyState()) {
+        counter += 10;
         pros::delay(10);
-        timeSet+=10;
 
-        if(timeSet > timeout) {
-            controller.rumble("-");
+        if(counter > 3000) {
             break;
         }
     }
-
-    waitShoot(wait);
-}
-
-void shoot(int num_disks, int rpmSpeed, int timeout, int threshold, int waitMsec) {
-    flyState = true;
-    setFlywheelRPM(rpmSpeed);
-    int timeSet;
-
-    for(int i=0; i<num_disks; i++) {
-        pros::delay(waitMsec);
-        timeSet = 0;
-        while(flyError > threshold) {
-            pros::delay(10);
-            timeSet+=10;
-
-            if(timeSet > timeout) {
-                controller.rumble("-");
-                break;
-            }
-        }
-
-        index(i);
-    }
-}
-
-void index(int disk) {
+    
     IIR.move_voltage(-12000);
-	controller.rumble(".");
-    if(disk == 2) {
-        pros::delay(400);
-    }
-    else if(disk == 1) {
-        pros::delay(150);
-    }
-    else {
-        pros::delay(130);
-    }
+    pros::delay(120);
+    IIR.move_voltage(0);
 
-	IIR.move_voltage(0);
+    pros::delay(100);
+
+    IIR.move_voltage(-12000);
+    pros::delay(120);
+    IIR.move_voltage(0);
+
+    pros::delay(200);
+
+    IIR.move_voltage(-12000);
+    pros::delay(300);
+    IIR.move_voltage(0);
+
+}
+
+void move(float dist, float limit) {
+    resetX();
+    linMovement.setTarget(dist);
+
+    linMovement.setConstants(lin_kP, 0, lin_kD*fabs(dist));
+
+    float initTheta = inertial.get_rotation();
+	while(!linMovement.isSettled()) {
+        float angPow = theta_kP * (inertial.get_rotation() - initTheta);
+		float power = lim(linMovement.calculateOutput(getRobotPose().getX()), limit);		
+        
+        LeftDT.move_voltage(power - angPow);
+        RightDT.move_voltage(power + angPow);
+		pros::delay(10);
+	}
+
+    brake();
 }
 
 void pivot(double angle) {
@@ -98,494 +92,169 @@ void pivot(double angle) {
         }
     }
 
-    // if bot is skill issue with negative
-    // if(theta < 0){
-    //     theta = 360 + theta;
-    // }
-
-    // turn!!
     turn(theta);
-	// //theta = total turn
-	// //angle = target angle (0 to 360 degrees)
-	// //startAngle = current angle of robot -inf < degrees < inf
-	// double theta = 0;
-	// int startAngle = inertial.get_rotation();
-	// //get relative to (0 to 360 degrees)
-	// startAngle = startAngle % 360;
-
-	// //two cases
-	// if(startAngle > 180) {
-	// 	theta = 360 - startAngle;
-	// 	theta += angle;
-	// 	if(theta >= 180) {
-	// 		//if the turn is bigger than 180, impractical - turn the other way
-	// 		theta = 360 - theta;
-	// 		theta*=-1;
-	// 	}
-	// }
-	// else if(startAngle <= 180) {
-	// 	theta = (theta + startAngle) * -1;
-	// 	theta+=angle;
-	// 	if(theta >= 180) {
-	// 		//if the turn is bigger than 180, impractical - turn the other way
-	// 		theta = 360 - theta;
-	// 		theta*=-1;
-	// 	}
-	// }
-
-	// //theta is final how much to turn
-	// turn(theta);
 }
-
-void forwardPD(float inches, double limit) {
-    inches *= 0.9;
-    int totalTime = 0;
-    LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-    RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-
-    absoluteBack = 0;
-
-    float latError = inches;
-
-    //save initial heading for angle correction
-    float initHeading = inertial.get_rotation();
-
-    float derivative = 0;
-    float prevLatError = 0;
-    int latPower = 0;
-
-    int smallError = 0;
-    int largeError = 0;
-
-    //Constants
-    float kP = 850;
-    float kD = fabs(inches) * 900;
-    float kP_Theta = 600;
-
-    do {
-        totalTime+=10;
-        pros::lcd::print(2, "inertial: %f\n", inertial.get_rotation());
-
-        //Calculate error from desired
-        latError = inches - absoluteBack;
-
-        //Derivative term on lateral
-        derivative = (latError - prevLatError)/10;
-        prevLatError = latError;
-        
-        //Calculate lateral power (Proportional + Derivative)
-        latPower = ((kP * latError) + (kD * derivative));
-
-        //Use limit to cap the motor's max output voltage (lateral)
-        if(abs(latPower) >= (12000 * limit)) {
-			if((abs(latPower)/latPower) == 1) {
-                latPower = 12000 * limit;
-            }else {
-                latPower = -12000 * limit;
-            }
-		}
-
-        if(fabs(latError) <= 1) {
-            smallError+=10;
-        }
-        if(fabs(latError) <= 3) {
-            largeError+=10;
-        }
-        
-        
-        if(smallError > 100) {
-            controller.rumble("-");
-            break;
-        }
-        if(largeError > 500) {
-            controller.rumble(".");
-            break;
-        }
-        if(totalTime > 3000) {
-            controller.rumble("-");
-            break;
-        }
-
-        LeftDT.move_voltage(latPower + (kP_Theta * (initHeading - inertial.get_rotation())));
-        RightDT.move_voltage(latPower - (kP_Theta * (initHeading - inertial.get_rotation())));
-
-        pros::delay(10);
-    }while(true);
-
-    LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-    RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-    LeftDT.brake();
-    RightDT.brake();
-    LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
-    RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
-    // int totalTime = 0;
-    // LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-    // RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-
-    // absoluteBack = 0;
-    // float curInches = 0;
-
-    // //1 or -1, forward or backward
-    // float latError = inches;
-    // int dir = inches/fabs(inches);
-
-    // //save initial heading for angle correction
-    // float initHeading = inertial.get_rotation();
-
-    // float derivative = 0;
-    // float prevLatError = 0;
-    // int latPower = 0;
-
-    // int smallError = 0;
-    // int largeError = 0;
-
-    // //Constants
-    // float kP = 850;
-    // float kD = fabs(inches) * 900;
-    // float kP_Theta = 500;
-
-    // float targetDir = dir;
-
-    // do {
-    //     targetDir = fabs(inches-absoluteBack)/(inches-absoluteBack);
-    //     totalTime+=10;
-    //     pros::lcd::print(2, "inertial: %f\n", inertial.get_rotation());
-    //     // pros::lcd::print(3, "ang: %f\n", angError);
-    //     curInches = absoluteBack;
-
-    //     //Calculate error from desired
-    //     latError = fabs(inches - curInches);
-
-    //     //Derivative term on lateral
-    //     derivative = (latError - prevLatError)/10;
-    //     prevLatError = latError;
-        
-    //     //Calculate lateral power (Proportional + Derivative)
-    //     latPower = dir * ((kP * latError) + (kD * derivative));
-
-    //     //Use limit to cap the motor's max output voltage (lateral)
-    //     if(abs(latPower) >= (12000 * limit)) {
-	// 		if(dir == 1) {
-    //             latPower = 12000 * limit;
-    //         }else if(dir == -1) {
-    //             latPower = -12000 * limit;
-    //         }
-	// 	}
-
-    //     if(fabs(latError) <= 1) {
-    //         smallError+=10;
-    //     }
-    //     if(fabs(latError) <= 3) {
-    //         largeError+=10;
-    //     }
-        
-        
-    //     if(smallError > 100) {
-    //         controller.rumble("-");
-    //         break;
-    //     }
-    //     if(largeError > 500) {
-    //         controller.rumble(".");
-    //         break;
-    //     }
-    //     if(totalTime > 3500) {
-    //         controller.rumble("-");
-    //         break;
-    //     }
-
-    //     LeftDT.move_voltage(targetDir * (latPower + (kP_Theta * (initHeading - inertial.get_rotation()))));
-    //     RightDT.move_voltage(targetDir * (latPower - (kP_Theta * (initHeading - inertial.get_rotation()))));
-
-    //     pros::delay(10);
-    // }while(true);
-
-    // LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-    // RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-    // LeftDT.brake();
-    // RightDT.brake();
-    // LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
-    // RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
-}
-
 
 void turn(float angle) {
-    int totalTime = 0;
-    int smallErr = 0;
-    int largeErr = 0;
-
-    int dir = fabs(angle)/angle;
-    angle = (int)(fabs(angle)) % 360;
-    angle *= dir;
-
-	float error = 0;
-	float prevError = 0;
-	float derivative = 0;
-	float power = 0;
-
-	float kP = 0;
-    float kD = 0;
-
-	float target = angle + inertial.get_rotation();
-
+    angTurn.setTarget(inertial.get_rotation() + angle);
     float fang = fabs(angle);
-    //Calculated 10, 30, 50, 90, 100, 130, 150, 170 and guessed based off that
+
+    //Gain Scheduling
     if(fang <= 10) {
-        kP = 900;
-        kD = fabs(angle) * 900;
+        angTurn.setConstants(450, 0, 50);
     }
     else if(fang <= 20) {
-        kP = 400;
-        kD = fabs(angle) * 800;
+        angTurn.setConstants(250, 0, 100);
     }
     else if(fang <= 30) {
-        kP = 550;
-        kD = fabs(angle) * 420;
+        angTurn.setConstants(255, 0, fang*31);
     }
     else if(fang <= 40) {
-        kP = 400;
-        kD = fabs(angle) * 500;
+        angTurn.setConstants(277, 0, fang*31);
     }
     else if(fang <= 50) {
-        kP = 470;
-        kD = fabs(angle) * 482;
+        angTurn.setConstants(350, 0, fang*40);
     }
     else if(fang <= 60) {
-        kP = 570;
-        kD = fabs(angle) * 462;
+        angTurn.setConstants(400, 0, fang*43);
     }
     else if(fang <= 70) {
-        kP = 500;
-        kD = fabs(angle) * 300;
+        angTurn.setConstants(425, 0, fang*44);
     }
     else if(fang <= 80) {
-        kP = 500;
-        kD = fabs(angle) * 335;
+        angTurn.setConstants(470, 0, fang*45);
     }
     else if(fang <= 90) {
-        kP = 500;
-        kD = fabs(angle) * 300;
-    }
-    else if(fang <= 95) {
-        kP = 480;
-        kD = fabs(angle) * 290;
+        angTurn.setConstants(550, 0, fang*40);
     }
     else if(fang <= 105) {
-        kP = 450;
-        kD = fabs(angle) * 240;
+        angTurn.setConstants(560, 0, fang*26);
     }
     else if(fang <= 120) {
-        kP = 435;
-        kD = fabs(angle) * 200;
+        angTurn.setConstants(570, 0, fang*25);
     }
     else if(fang <= 135) {
-        kP = 340;
-        kD = fabs(angle) * 150;
+        angTurn.setConstants(570, 0, fang*19);
     }
     else if(fang <= 150) {
-        kP = 290;
-        kD = fabs(angle) * 110;
+        angTurn.setConstants(450, 0, fang*20);
     }
     else if(fang <= 165) {
-        kP = 305;
-        kD = fabs(angle) * 115;
+        angTurn.setConstants(450, 0, fang*20);
     }
-    // else if(fang <= 180) {
     else {
-        kP = 305;
-        kD = fabs(angle) * 105;
+       angTurn.setConstants(500, 0, fang*25);
     }
 	
-	do {
+	while(!angTurn.isSettled()) {
+        float turnSpeed = angTurn.calculateOutput(inertial.get_rotation());
+        LeftDT.move_voltage(turnSpeed);
+        RightDT.move_voltage(-turnSpeed);
         
-        totalTime += 10;
-		error = target - inertial.get_rotation();;
-		derivative = (error - prevError)/10;
-		prevError = error;
-
-        power = (error * kP) + (derivative * kD);
-
-        //Cap
-        if(fabs(power) >= 12000 * 0.6) {
-            if(dir == 1) {
-                power = 12000 * 0.6;
-            } 
-            else if(dir == -1) {
-                power = -12000 * 0.6;
-            }
-        }
-
-		RightDT.move_voltage(-power);
-		LeftDT.move_voltage(power);
-
-        pros::lcd::print(3, "theta: %f\n", inertial.get_rotation());
-        pros::lcd::print(4, "power: %f\n", power);
-
-        if(fabs(error) <= 1) {
-            smallErr+=10;
-        }
-        if(fabs(error) <= 3) {
-            largeErr+=10;
-        }  
-
-        if(smallErr > 150) {
-            controller.rumble(".");
-            break;
-        }
-        if(largeErr > 400) {
-            controller.rumble("-");
-            break;
-        }
-        if(totalTime > 2500) {
-            controller.rumble("-");
-            break;
-        }
-
+        // pros::lcd::print(3, "target: %f\n", angTurn.getTarget());
         pros::delay(10);
-	}while(true);
+	}
 
-    LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-    RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-    LeftDT.brake();
-    RightDT.brake();
-    // LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
-    // RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
+    brake();
 }
 
-void rotate(double angle) {
-    int timeAtError = 0;
-    int totalTime = 0;
+void swing(float angle, bool leftSwing, float otherPower) {
+    angTurn.setTarget(inertial.get_rotation() + angle);
+    float fang = fabs(angle);
 
-	double error = 0;
-	double prevError = 0;
-	double derivative = 0;
-	double power = 0;
-	double kP = 95;
-	double kI = 6.5;
-    double kD = 220;
-    double integral = 0;
-    //100, 7, 220
+    //Gain Scheduling
+    if(fang <= 10) {
+        angTurn.setConstants(450, 0, 50);
+    }
+    else if(fang <= 20) {
+        angTurn.setConstants(250, 0, 100);
+    }
+    else if(fang <= 30) {
+        angTurn.setConstants(255, 0, fang*31);
+    }
+    else if(fang <= 40) {
+        angTurn.setConstants(277, 0, fang*31);
+    }
+    else if(fang <= 50) {
+        angTurn.setConstants(350, 0, fang*40);
+    }
+    else if(fang <= 60) {
+        angTurn.setConstants(400, 0, fang*43);
+    }
+    else if(fang <= 70) {
+        angTurn.setConstants(425, 0, fang*44);
+    }
+    else if(fang <= 80) {
+        angTurn.setConstants(470, 0, fang*45);
+    }
+    else if(fang <= 90) {
+        angTurn.setConstants(550, 0, fang*43);
+    }
+    else if(fang <= 105) {
+        angTurn.setConstants(550, 0, fang*44);
+    }
+    else if(fang <= 120) {
+        angTurn.setConstants(570, 0, fang*25);
+    }
+    else if(fang <= 135) {
+        angTurn.setConstants(570, 0, fang*20);
+    }
+    else if(fang <= 150) {
+        angTurn.setConstants(450, 0, fang*20);
+    }
+    else if(fang <= 165) {
+        angTurn.setConstants(450, 0, fang*20);
+    }
+    else {
+       angTurn.setConstants(500, 0, fang*25);
+    }
 
-	double target = angle + inertial.get_rotation();
-	
-	do {
-		error = target - inertial.get_rotation();
-		derivative = error - prevError;
-        integral+=error;
-		prevError = error;
-
-        if(std::signbit(error) != std::signbit(prevError)) {
-            integral = 0;
+    while(!angTurn.isSettled()) {
+        float turnSpeed = angTurn.calculateOutput(inertial.get_rotation());
+        if(leftSwing){
+            LeftDT.move_voltage(turnSpeed);
+            RightDT.move_voltage(otherPower);
         }
-        if(error > 10) {
-            integral = 0;
-        }
-
-		power = (error * kP) + (derivative*kD) + (integral * kI);
-
-		RightDT.move_voltage(5000 - 0.6 * power);
-		LeftDT.move_voltage(5000 + 0.6 * power);
-
-        pros::lcd::print(3, "theta: %f\n", inertial.get_rotation());
-        pros::lcd::print(4, "power: %f\n", power);
-
-        if(fabs(target - inertial.get_rotation()) < 3) {
-            timeAtError+=10;
+        else {
+            LeftDT.move_voltage(otherPower);
+            RightDT.move_voltage(-turnSpeed);
         }
         
-        totalTime+=10;
-
-        if(timeAtError > 1000) {
-            controller.rumble("-");
-            break;
-        }
-
-        if(totalTime > 5000) {
-            controller.rumble("-");
-            break;
-        }
-
+        // pros::lcd::print(3, "target: %f\n", angTurn.getTarget());
         pros::delay(10);
-        // std::cout << totalTime << "," << power << "," << error << "\n";
+	}
 
-	}while(fabs(target - inertial.get_rotation()) > 1);
+    brake();
+}
 
-    // pros::lcd::print(5, "error: %f\n", target - inertial.get_rotation());
-
-    // if(fabs(target - inertial.get_rotation()) > 10) {
-    //     turn(target - inertial.get_rotation());
-    // }
-
-    LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-    RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
+void brake() {
     LeftDT.brake();
     RightDT.brake();
+}
+
+void setHold() {
+    LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
+    RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
+}
+
+void setCoast() {
     LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
     RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
 }
 
-void negative(double angle, float p, float d) {
-    int timeAtError = 0;
-    int totalTime = 0;
+void powerMV(float l, float r) {
+    LeftDT.move_voltage(l);
+    RightDT.move_voltage(r);
+}
 
-	double error = 0;
-	double prevError = 0;
-	double derivative = 0;
-	double power = 0;
-    double kP = p;
-	double kI = 0;
-    double kD = d;
-    double integral = 0;
-    //100, 6.5, 220
-
-	double target = angle + inertial.get_rotation();
-	
-	do {
-		error = target - inertial.get_rotation();
-		derivative = error - prevError;
-        integral+=error;
-		prevError = error;
-
-        if(std::signbit(error) != std::signbit(prevError)) {
-            integral = 0;
+float lim(float input, float limitPCT) {
+    if(abs(input) >= (12000 * limitPCT)) {
+        if(numbersign(input) == 1) {
+            input = 12000 * limitPCT;
+        }else {
+            input = -12000 * limitPCT;
         }
-        if(error > 10) {
-            integral = 0;
-        }
+    }
 
-		power = (error * kP) + (derivative*kD) + (integral * kI);
-
-		RightDT.move_voltage(-power);
-		LeftDT.move_voltage(power);
-
-        pros::lcd::print(3, "theta: %f\n", inertial.get_rotation());
-        pros::lcd::print(4, "power: %f\n", power);
-
-        if(fabs(target - inertial.get_rotation()) < 3) {
-            timeAtError+=10;
-        }
-        
-        totalTime+=10;
-
-        // if(timeAtError > 3000) {
-        //     controller.rumble("-");
-        //     break;
-        // }
-
-        if(totalTime > 3000) {
-            controller.rumble("-");
-            break;
-        }
-
-        pros::delay(10);
-        // std::cout << totalTime << "," << power << "," << error << "\n";
-
-	}while(fabs(target - inertial.get_rotation()) > 1);
-
-
-    LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-    RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
-    LeftDT.brake();
-    RightDT.brake();
-    LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
-    RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
+    return input;
 }

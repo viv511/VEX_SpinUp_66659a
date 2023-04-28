@@ -71,13 +71,8 @@ void disabled(void);
 void competition_initialize(void);
 void opcontrol(void);
 
-void regionals();
-void RollerSide();
-void NonRoller();
-void walter();
-void AWP();
-
-void waitShoot(int waitTime);
+void rightAuto();
+void leftAuto();
 
 
 #ifdef __cplusplus
@@ -92,4 +87,3 @@ void waitShoot(int waitTime);
 #endif
 
 #endif  // _PROS_MAIN_H_
-

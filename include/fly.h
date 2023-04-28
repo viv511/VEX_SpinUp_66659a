@@ -1,5 +1,6 @@
 #include "main.h"
-#include "variables.h"
+#include <cmath>
+#include <queue>
 #include "globals.h"
 
 #ifndef FLY_H
@@ -10,6 +11,9 @@ extern pros::Mutex rpmMutex;
 extern pros::Mutex rpmReady;
 extern bool flywheel_ready;
 extern double target_rpm;
+
+bool getToggle();
+void setToggle(bool e);
 
 void flySpeed(void);
 

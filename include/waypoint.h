@@ -1,11 +1,6 @@
 #include "main.h"
 #include "globals.h"
 #include <vector>
-#include "odom.h"
-#include "pros/motors.h"
-#include "variables.h"
-#include "driveauto.h"
-#include "fly.h"
 #include <cmath>
 #include <iostream>
 #include <fstream>
@@ -43,66 +38,60 @@ class Waypoint {
             this->curv = 0;
         }
 
-        //Getters
-        float getX() {
-            return this->x;
-        }
+    //Getters
+    float getX() {
+        return this->x;
+    }
 
-        float getY() {
-            return this->y;
-        }
-        
-        float getTheta() {
-            return this->theta;
-        }
+    float getY() {
+        return this->y;
+    }
+    
+    float getTheta() {
+        return this->theta;
+    }
 
-        float getDist() {
-            return this->dist;
-        }
+    float getDist() {
+        return this->dist;
+    }
 
-        float getVel() {
-            return this->vel;
-        }
+    float getVel() {
+        return this->vel;
+    }
 
-        float getCurv() {
-            return this->curv;
-        }
+    float getCurv() {
+        return this->curv;
+    }
 
-        //Setters
-        void setX(float newX) {
-            this->x = newX;
-        }
+    //Setters
+    void setX(float newX) {
+        this->x = newX;
+    }
 
-        void setY(float newY) {
-            this->y = newY;
-        }
+    void setY(float newY) {
+        this->y = newY;
+    }
 
-        void setTheta(float newTheta) {
-            this->theta = newTheta;
-        }
+    void setTheta(float newTheta) {
+        this->theta = newTheta;
+    }
 
-        void setDist(float newDist) {
-            this->dist = newDist;
-        }
+    void setDist(float newDist) {
+        this->dist = newDist;
+    }
 
-        void setVel(float newVel) {
-            this->vel = newVel;
-        }
+    void setVel(float newVel) {
+        this->vel = newVel;
+    }
 
-        void setCurv(float newCurv) {
-            this->curv = newCurv;
-        }
+    void setCurv(float newCurv) {
+        this->curv = newCurv;
+    }
+
+    
 };
 
-float getLength(Waypoint P);
-float distance(Waypoint A, Waypoint B);
-float angle(Waypoint A, Waypoint B);
-float dotProduct(Waypoint A, Waypoint B);
-Waypoint normalizeVect(Waypoint P);
-Waypoint scalarMult(Waypoint P, float s);
-Waypoint getDirVector(Waypoint A, Waypoint B);
-int sign(float num);
-void debug(Waypoint p);
+
 
 
 #endif

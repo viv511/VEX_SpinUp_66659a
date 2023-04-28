@@ -26,8 +26,9 @@ extern pros::IMU inertial;
 extern pros::Rotation backEncoder;
 extern pros::Rotation rightEncoder;
 
-// //pistons
+//pistons
+extern pros::ADIDigitalOut blooper;
 extern pros::ADIDigitalOut endgame1;
-extern pros::ADIDigitalOut endgame2;
+// extern pros::ADIDigitalOut endgame2;
 
 #endif
