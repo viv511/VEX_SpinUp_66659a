@@ -123,42 +123,45 @@ void moveTo(Waypoint P) {
 	LeftDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
     RightDT.set_brake_modes(pros::E_MOTOR_BRAKE_HOLD);
     
-	// float power[2];
-	// power[0] = 0;
-	// power[1] = 0;
-
 	Waypoint R = getRobotPose();
-	float xDiff = P.getX() - R.getX();
-	float yDiff = P.getY() - R.getY();
+	float dist = distance(R, P);
+	float ang = angle(R, P);
 
 	while(!robotSettled(P)) {
 		R = getRobotPose();
+		dist = distance(R, P);
+		ang = angle(R, P);
 
-		xDiff = P.getX() - R.getX();
-		yDiff = P.getY() - R.getY();
+		float headingScale = std::cos(ang);
+		//lin power * headingScale +/- heading output 
 
-		float phi = R.getTheta() * degreesToRadians;
-		float linErr = yDiff * std::cos(phi) + xDiff * std::sin(phi);
-		float angErr = angle(R, P);
 
-		float linPower = kP_Linear * linErr;
-		float angPower = kP_Angular * angErr;
 
-		float leftPower = linPower + angPower;
-		float rightPower = linPower - angPower;
+		// xDiff = P.getX() - R.getX();
+		// yDiff = P.getY() - R.getY();
 
-		//Secret sauce
-		float maxP = std::max(leftPower, rightPower);
-		float minP = std::abs(std::min(leftPower, rightPower));
+		// float phi = R.getTheta() * degreesToRadians;
+		// float linErr = yDiff * std::cos(phi) + xDiff * std::sin(phi);
+		// float angErr = angle(R, P);
 
-		float frMax = std::max(maxP, minP);
-		float scaleMoment = (frMax > 100) ? 100 / frMax : 1;
+		// float linPower = kP_Linear * linErr;
+		// float angPower = kP_Angular * angErr;
 
-		controller.rumble(".");
-		// pros::lcd::print(4, "Left: %f\n", (float)(70 * scaleMoment * leftPower));
-		// pros::lcd::print(5, "Right: %f\n", (float)(70 * scaleMoment * rightPower));
-		LeftDT.move_voltage(scaleMoment * leftPower * 80);
-		RightDT.move_voltage(scaleMoment * rightPower * 80);
+		// float leftPower = linPower + angPower;
+		// float rightPower = linPower - angPower;
+
+		// //Secret sauce
+		// float maxP = std::max(leftPower, rightPower);
+		// float minP = std::abs(std::min(leftPower, rightPower));
+
+		// float frMax = std::max(maxP, minP);
+		// float scaleMoment = (frMax > 100) ? 100 / frMax : 1;
+
+		// controller.rumble(".");
+		// // pros::lcd::print(4, "Left: %f\n", (float)(70 * scaleMoment * leftPower));
+		// // pros::lcd::print(5, "Right: %f\n", (float)(70 * scaleMoment * rightPower));
+		// LeftDT.move_voltage(scaleMoment * leftPower * 80);
+		// RightDT.move_voltage(scaleMoment * rightPower * 80);
 	}
 
 	LeftDT.brake();
@@ -190,10 +193,8 @@ float distance(Waypoint A, Waypoint B) {
 
 float angle(Waypoint A, Waypoint B) {
 	float dTheta = std::atan2(B.getY() - A.getY(), B.getX() - A.getX());
-	if(dTheta < 0) {
-		dTheta += 360;
-	}
-	return dTheta;
+
+	return dTheta*radiansToDegrees;
 }
 
 Waypoint normalizeVect(Waypoint P) {
