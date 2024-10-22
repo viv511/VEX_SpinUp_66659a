@@ -13,5 +13,4 @@ Match Record: 40 - 16
 
 Our code can be viewed through the /src folder and the /include folder. Corresponding C++ files have corresponding header files (example.cpp & example.h). Most of the code is documented and has been developed by us with many external public resources such as: George Gillard's PID Document, FRC White Papers, 5225A Pilon's Odometry Document, advice & support from other SNE teams, the PROS Editor/API, and VSCode.
 
-<3 viv511
--Team 66659a
+with <3 viv511
